@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>Continuidad 2027 · Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo Excel y Base Viva…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
+
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">CONTINUIDAD · AD27</div>
+      <h1>Pronóstico, propensión y oportunidades por campus</h1>
+      <p>Resumen operativo por campus y ficha individual por matrícula.</p>
+    </div>
+    <button id="reloadBtn" class="btn">Actualizar desde Excel</button>
+  </header>
+
+  <main class="page-shell">
+    <section class="toolbar card">
+      <div class="control grow">
+        <label>Campus</label>
+        <select id="campusSelect"></select>
+      </div>
+      <div class="control grow2">
+        <label>Buscar matrícula</label>
+        <input id="studentSearch" type="search" placeholder="Ej. T03101419" autocomplete="off" />
+      </div>
+      <div class="control compact">
+        <label>Ordenar alumnos</label>
+        <select id="studentOrder">
+          <option value="opp">Mayor oportunidad primero</option>
+          <option value="risk">Menor probabilidad primero</option>
+          <option value="prob">Mayor probabilidad primero</option>
+          <option value="id">Matrícula A–Z</option>
+        </select>
+      </div>
+      <div class="control compact">
+        <label>Oportunidad de convencimiento</label>
+        <select id="opportunityFilter">
+          <option value="all">Todas las matrículas</option>
+          <option value="opportunity">Solo oportunidades</option>
+          <option value="Muy alta">Muy alta</option>
+          <option value="Alta">Alta</option>
+          <option value="Media-Alta">Media-Alta</option>
+          <option value="other">Resto / seguimiento</option>
+        </select>
+      </div>
+      <div class="source-pill"><span class="dot"></span><strong>Base Viva activa</strong><small id="sourceText">—</small></div>
+    </section>
+
+    <section id="surveyNote" class="survey-note card">—</section>
+
+    <section class="kpi-grid">
+      <article class="card kpi"><span>Base Viva actual</span><strong id="kpiBase">—</strong><small>alumnos activos del campus</small></article>
+      <article class="card kpi"><span>Respondentes activos</span><strong id="kpiSurvey">—</strong><small id="kpiCoverage">—</small></article>
+      <article class="card kpi accent"><span>Continuadores esperados</span><strong id="kpiCont">—</strong><small id="kpiContSub">—</small></article>
+      <article class="card kpi"><span>Oportunidades de convencimiento</span><strong id="kpiOpp">—</strong><small>media-alta, alta o muy alta</small></article>
+    </section>
+
+    <section class="campus-grid">
+      <article class="card panel history-panel">
+        <div class="panel-head">
+          <div><div class="section-kicker">EVOLUCIÓN</div><h2>Continuadores históricos y referencia 2027</h2></div>
+          <div class="state-wrap"><span id="stateBadge" class="state">—</span><small id="rangeText">—</small></div>
+        </div>
+        <div id="historyChart" class="history-chart"></div>
+        <div id="historyTable" class="history-table-wrap"></div>
+        <div id="forecastExplanation" class="forecast-explanation"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="panel-head"><div><div class="section-kicker">COMPOSICIÓN</div><h2>Segmentos del campus</h2></div></div>
+        <div class="donut-row"><div id="clusterDonut" class="donut"><div><strong id="clusterTotal">—</strong><span>alumnos</span></div></div><div id="clusterLegend" class="legend-list"></div></div>
+      </article>
+
+      <article class="card panel">
+        <div class="panel-head"><div><div class="section-kicker">PROPENSIÓN RELATIVA</div><h2>Distribución de la cohorte</h2></div></div>
+        <div id="propensityBars" class="vertical-bars"></div>
+        <p class="muted">Se muestra cantidad de alumnos y porcentaje dentro de los respondentes activos.</p>
+      </article>
+    </section>
+
+    <section class="signals-grid">
+      <article class="card panel"><div class="panel-head"><div><div class="section-kicker">QUÉ VALORAN</div><h2>Factores más frecuentes</h2></div></div><div id="topFactors" class="rank-list"></div></article>
+      <article class="card panel"><div class="panel-head"><div><div class="section-kicker amber">BARRERAS</div><h2>Razones para no elegir Tecmilenio</h2></div></div><div id="topReasons" class="rank-list reasons"></div></article>
+    </section>
+
+    <section class="experience-grid">
+      <article class="card experience-card"><span>NPS promedio</span><strong id="expNps">—</strong><small id="expNpsText">—</small></article>
+      <article class="card experience-card"><span>Orgullo promedio</span><strong id="expPride">—</strong><small id="expPrideText">—</small></article>
+      <article class="card experience-card"><span>Seguridad campus</span><strong id="expSecurity">—</strong><small id="expSecurityText">—</small></article>
+      <article class="card experience-card"><span>Infraestructura</span><strong id="expInfra">—</strong><small id="expInfraText">—</small></article>
+      <article class="card experience-card neutral"><span>Programa ofertado</span><strong id="expOffer">—</strong><small>cantidad y % de respondentes activos</small></article>
+    </section>
+
+    <section class="student-explorer">
+      <aside class="card student-list-panel">
+        <div class="panel-head"><div><div class="section-kicker">ALUMNOS</div><h2>Explorador de matrícula</h2></div><span id="studentCount" class="count-badge">0</span></div>
+        <div id="studentList" class="student-list"></div>
+        <p id="listNote" class="muted list-note"></p>
+      </aside>
+
+      <article class="card student-detail-panel">
+        <div id="studentEmpty" class="empty-state"><div class="empty-icon">⌕</div><h2>Selecciona una matrícula</h2><p>La ficha muestra probabilidad, respuestas, factores, barreras y oportunidad de convencimiento. No se muestran nombres.</p></div>
+        <div id="studentDetail" class="hidden">
+          <div class="student-hero">
+            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span class="badge live">Base Viva</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
+            <div class="probability-card"><span>Probabilidad estimada de continuidad</span><strong id="studentProb">—</strong><div class="prob-track"><div id="studentProbBar"></div></div><div class="prob-meta"><span id="studentProp">—</span><span id="studentPct">—</span></div></div>
+          </div>
+
+          <div class="reference-strip">
+            <div><span>Potencial estructural</span><strong id="studentPotential">—</strong></div>
+            <div><span>Percentil estructural</span><strong id="studentPotentialPct">—</strong></div>
+            <div><span>Prioridad de convencimiento</span><strong id="studentConvPriority">—</strong></div>
+            <div><span>Brecha de oportunidad</span><strong id="studentOppGap">—</strong></div>
+            <div><span>Oportunidad</span><strong id="studentOpportunity">—</strong></div>
+          </div>
+
+          <div class="student-info-grid">
+            <div class="info-card"><span>Carrera que quiere estudiar</span><strong id="studentCareer">—</strong></div>
+            <div class="info-card"><span>¿Planea iniciar en Tecmilenio?</span><strong id="studentPlansTec">—</strong></div>
+            <div class="info-card"><span>Universidad donde planea estudiar</span><strong id="studentUniversity">—</strong></div>
+            <div class="info-card"><span>Campus de interés</span><strong id="studentDesiredCampus">—</strong></div>
+            <div class="info-card"><span>Modalidad preferida</span><strong id="studentModality">—</strong></div>
+            <div class="info-card"><span>Movilidad</span><strong id="studentMobility">—</strong></div>
+            <div class="info-card"><span>Prioridad Tecmilenio</span><strong id="studentPriority">—</strong></div>
+            <div class="info-card"><span>Programa ofertado en campus</span><strong id="studentOffered">—</strong></div>
+            <div class="info-card"><span>Seguridad en carrera</span><strong id="studentCareerCertainty">—</strong></div>
+            <div class="info-card"><span>Orientación vocacional</span><strong id="studentOrientation">—</strong></div>
+            <div class="info-card"><span>Beca actual</span><strong id="studentScholarship">—</strong></div>
+            <div class="info-card"><span>Programa de interés declarado</span><strong id="studentProgramInterest">—</strong></div>
+          </div>
+
+          <div class="student-experience">
+            <div id="studentNpsCard" class="metric-chip"><span>NPS</span><strong id="studentNps">—</strong></div>
+            <div id="studentPrideCard" class="metric-chip"><span>Orgullo</span><strong id="studentPride">—</strong></div>
+            <div id="studentSecurityCard" class="metric-chip"><span>Seguridad campus</span><strong id="studentSecurity">—</strong></div>
+            <div id="studentInfraCard" class="metric-chip"><span>Infraestructura</span><strong id="studentInfra">—</strong></div>
+          </div>
+
+          <div class="cluster-card"><div id="studentClusterId" class="cluster-number">—</div><div><span>SEGMENTO</span><h3 id="studentClusterName">—</h3><p id="studentClusterDescription">—</p><div class="action-line"><span>Palanca sugerida</span><strong id="studentClusterLever">—</strong></div></div></div>
+
+          <div class="chips-grid"><div><h3>Factores que valora</h3><div id="studentFactors" class="chips"></div></div><div><h3>Razones / barreras declaradas</h3><div id="studentReasons" class="chips warning"></div></div></div>
+
+          <div class="reading-box"><div class="section-kicker">LECTURA DE OPORTUNIDAD</div><p id="studentReading">—</p><small id="studentSummary">—</small></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="card panel campus-table-panel">
+      <div class="panel-head"><div><div class="section-kicker">COMPARATIVO</div><h2>Resumen por campus</h2></div><small>Haz clic en una fila para abrir el campus.</small></div>
+      <div class="table-scroll"><table><thead><tr><th>Campus</th><th class="num">Base Viva</th><th class="num">Respondentes</th><th class="num">Continuadores esperados</th><th class="num">Rango</th><th class="num">Prop. alta/muy alta</th><th class="num">Oportunidades</th><th>Lectura</th></tr></thead><tbody id="campusTableBody"></tbody></table></div>
+    </section>
+
+    <section class="card indicator-guide">
+      <div class="panel-head"><div><div class="section-kicker">CÓMO LEER EL TABLERO</div><h2>Propensión y oportunidad de convencimiento</h2></div></div>
+      <div class="guide-grid">
+        <div><h3>Propensión relativa</h3><p>Ubica al alumno frente al resto de los respondentes según el modelo principal. Muy baja, baja, media, alta y muy alta son grupos relativos; no equivalen directamente a una probabilidad.</p></div>
+        <div><h3>Potencial estructural</h3><p>Ordena al alumno con un segundo modelo que excluye la prioridad declarada. Sirve para detectar perfiles favorables aunque hoy Tecmilenio no sea su primera opción.</p></div>
+        <div><h3>Brecha de oportunidad</h3><p>Compara la posición del alumno con y sin prioridad. Una brecha positiva grande señala que su intención actual es más baja que lo que sugerirían sus demás características.</p></div>
+        <div><h3>Prioridad de convencimiento</h3><p>Clasificación operativa que combina prioridad declarada, programa ofertado y potencial estructural. Media-Alta, Alta y Muy alta se consideran oportunidades para seguimiento comercial.</p></div>
+      </div>
+      <div class="guide-note"><strong>Semáforo de experiencia:</strong> menor a 7 = rojo · de 7 a 8.9 = amarillo · 9 o más = verde. Aplica a NPS, orgullo, seguridad e infraestructura.</div>
+    </section>
+
+    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>El conteo 2027 se aplica a la Base Viva actual de cada campus. Por ello, el volumen debe interpretarse como una referencia condicionada al universo activo disponible hoy.</p></div><div><h3>Tasa de referencia</h3><p>Se usa el punto medio entre el promedio histórico ponderado 2024–2026 y el límite superior del modelo calibrado. Esto evita trasladar automáticamente caídas fuertes del modelo sin abandonar la señal histórica.</p></div><div><h3>Interpretación</h3><p>Riesgo o mejora solo se declara cuando la diferencia contra 2026 es consistente con la composición de propensión del campus.</p></div></div></details>
+  </main>
+
+  <div id="errorBox" class="error-box hidden"></div>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
