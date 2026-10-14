@@ -194,7 +194,7 @@ async function fetchData(reload=false){
     histAbs.push({year:2027,n:operationalBase,rate:refRate,continuers:cont||0,forecast:true});
     return {
       campus_norm:norm,campus:norm==='__ALL__'?'Todos los campus':displayCampus(norm),survey_n:rows.length,base_viva_n:Number(baseCount||0),operational_base:Number(operationalBase||0),operational_base_method:baseMethod,
-      continuers_expected:cont,continuers_low:contLo,continuers_high:contHi,forecast_rate:refRate,model_mean:modelMean,model_upper:modelHi,hist3_weighted:hist3,hist2026,state:status,delta_vs_2026_pp:delta===null?null:delta*100,rate_method:rateMethod,explanation,
+      continuers_expected:cont,continuers_low:contLo,continuers_high:contHi,forecast_rate:refRate,forecast_rate_low:lowRate,forecast_rate_high:highRate,model_mean:modelMean,model_upper:modelHi,hist3_weighted:hist3,hist2026,state:status,delta_vs_2026_pp:delta===null?null:delta*100,rate_method:rateMethod,explanation,
       history:histAbs,propensity:prop,clusters,factors,reasons,opportunity_count:oppCount,program_offered_count:offerCount,program_offered_pct:rows.length?offerCount/rows.length:0,nps:average(rows,'NPS'),orgullo:average(rows,'orgullo'),seguridad:average(rows,'seguridad_campus'),infra:average(rows,'Satisfaccion infra')
     };
   }
@@ -254,16 +254,41 @@ function renderKPIs(s){
 function renderHistory(s){
   $('stateBadge').textContent=s.state;
   $('stateBadge').className=`state ${cssState(s.state)}`;
-  $('rangeText').textContent=s.continuers_expected==null?'—':`Rango ${fmt.format(s.continuers_low)}–${fmt.format(s.continuers_high)}`;
+  const rateLo=s.forecast_rate_low;
+  const rateHi=s.forecast_rate_high;
+  $('rangeText').textContent=(rateLo==null||rateHi==null)?'—':`Rango tasa ${pct(rateLo)}–${pct(rateHi)}`;
+
   const data=s.history||[];
-  const width=720,height=220,pad={l:44,r:14,t:15,b:34};
-  const max=Math.max(10,...data.map(d=>d.continuers||0))*1.15;
+  const width=720,height=220,pad={l:48,r:14,t:15,b:34};
+  const validRates=data.map(d=>d.rate).filter(v=>v!==null&&v!==undefined&&Number.isFinite(Number(v))).map(Number);
+  const observedMax=validRates.length?Math.max(...validRates):0.30;
+  // Eje porcentual desde 0, con techo redondeado a decenas y mínimo de 40%.
+  const maxRate=Math.max(0.40,Math.ceil(observedMax*10)/10);
   const x=i=>pad.l+(width-pad.l-pad.r)*(i/(Math.max(1,data.length-1)));
-  const y=v=>height-pad.b-(height-pad.t-pad.b)*(v/max);
-  let grid=''; for(let i=0;i<=4;i++){ const val=max*i/4; const yy=y(val); grid+=`<line x1="${pad.l}" y1="${yy}" x2="${width-pad.r}" y2="${yy}" stroke="#e9efec"/><text x="${pad.l-7}" y="${yy+3}" text-anchor="end" font-size="9" fill="#71817b">${Math.round(val)}</text>`; }
-  const points=data.map((d,i)=>`${x(i)},${y(d.continuers||0)}`).join(' ');
-  let marks=''; data.forEach((d,i)=>{ const forecast=d.forecast; marks+=`<circle cx="${x(i)}" cy="${y(d.continuers||0)}" r="${forecast?5:4}" fill="${forecast?'#15805d':'#6f7f79'}"><title>${d.year}: ${fmt.format(d.continuers||0)} continuadores · N ${fmt.format(d.n||0)}${d.rate!=null?' · '+pct(d.rate):''}</title></circle><text x="${x(i)}" y="${height-12}" text-anchor="middle" font-size="9" fill="#667670">${d.year}</text>`; });
-  $('historyChart').innerHTML=`<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${grid}<polyline points="${points}" fill="none" stroke="#667a72" stroke-width="2.3"/><line x1="${x(data.length-2)}" y1="${y(data[data.length-2]?.continuers||0)}" x2="${x(data.length-1)}" y2="${y(data[data.length-1]?.continuers||0)}" stroke="#16805d" stroke-width="3" stroke-dasharray="7 5"/>${marks}</svg>`;
+  const y=v=>height-pad.b-(height-pad.t-pad.b)*(Number(v)/maxRate);
+
+  let grid='';
+  for(let i=0;i<=4;i++){
+    const val=maxRate*i/4;
+    const yy=y(val);
+    grid+=`<line x1="${pad.l}" y1="${yy}" x2="${width-pad.r}" y2="${yy}" stroke="#e9efec"/><text x="${pad.l-7}" y="${yy+3}" text-anchor="end" font-size="9" fill="#71817b">${Math.round(val*100)}%</text>`;
+  }
+
+  const histPoints=data.map((d,i)=>({d,i})).filter(({d})=>!d.forecast&&d.rate!=null&&Number.isFinite(Number(d.rate)));
+  const histPolyline=histPoints.length>1?`<polyline points="${histPoints.map(({d,i})=>`${x(i)},${y(d.rate)}`).join(' ')}" fill="none" stroke="#667a72" stroke-width="2.3"/>`:'';
+  const forecastItem=data.map((d,i)=>({d,i})).find(({d})=>d.forecast&&d.rate!=null&&Number.isFinite(Number(d.rate)));
+  const lastHist=histPoints.length?histPoints[histPoints.length-1]:null;
+  const forecastLine=(forecastItem&&lastHist)?`<line x1="${x(lastHist.i)}" y1="${y(lastHist.d.rate)}" x2="${x(forecastItem.i)}" y2="${y(forecastItem.d.rate)}" stroke="#16805d" stroke-width="3" stroke-dasharray="7 5"/>`:'';
+
+  let marks='';
+  data.forEach((d,i)=>{
+    marks+=`<text x="${x(i)}" y="${height-12}" text-anchor="middle" font-size="9" fill="#667670">${d.year}</text>`;
+    if(d.rate==null||!Number.isFinite(Number(d.rate))) return;
+    const forecast=d.forecast;
+    marks+=`<circle cx="${x(i)}" cy="${y(d.rate)}" r="${forecast?5:4}" fill="${forecast?'#15805d':'#6f7f79'}"><title>${d.year}: ${pct(d.rate)} continuidad · ${fmt.format(d.continuers||0)} continuadores · N ${fmt.format(d.n||0)}</title></circle>`;
+  });
+
+  $('historyChart').innerHTML=`<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${grid}${histPolyline}${forecastLine}${marks}</svg>`;
   $('historyTable').innerHTML=`<table class="history-mini"><thead><tr><th>Año</th>${data.map(d=>`<th>${d.year}</th>`).join('')}</tr></thead><tbody><tr><td>Egresados / base</td>${data.map(d=>`<td>${fmt.format(d.n||0)}</td>`).join('')}</tr><tr><td>Continuadores</td>${data.map(d=>`<td class="${d.forecast?'forecast':''}">${fmt.format(d.continuers||0)}</td>`).join('')}</tr><tr><td>Tasa</td>${data.map(d=>`<td>${d.rate==null?'—':pct(d.rate)}</td>`).join('')}</tr></tbody></table>`;
   $('forecastExplanation').textContent=s.explanation;
 }
