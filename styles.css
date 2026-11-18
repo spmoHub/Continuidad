@@ -220,13 +220,11 @@ body{font-size:clamp(12px,.82vw,14px)}
 }
 
 
-/* =========================================================
-   AJUSTES V11 · INSCRITOS + NOWCAST
-   ========================================================= */
-.kpi-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+/* V11.2 · Base Viva + inscritos confirmados de respondientes */
+.kpi-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
 .kpi.confirmed{border-color:#b9d7f2;background:linear-gradient(180deg,#fff,#f4f9fd)}
 .kpi.confirmed strong{color:#256da8}
-#kpiContSub{line-height:1.35}
-@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#kpiContSub,#kpiInscritosSub,#kpiBaseForecastSub{line-height:1.35}
+@media(max-width:1250px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.kpi-grid{grid-template-columns:1fr}}

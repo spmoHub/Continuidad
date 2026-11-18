@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Continuidad 2027 · Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11" />
-  <meta name="dashboard-version" content="v11-inscritos-nowcast">
+  <link rel="stylesheet" href="styles.css?v=11.2" />
+  <meta name="dashboard-version" content="v11.2-baseviva-plus-inscritos-match">
 </head>
 <body>
   <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
@@ -50,23 +50,24 @@
           <option value="other">Resto / seguimiento</option>
         </select>
       </div>
-      <div class="source-pill"><span class="dot"></span><strong>Fuentes operativas</strong><small id="sourceText">—</small></div>
+      <div class="source-pill"><span class="dot"></span><strong>Seguimiento AD27</strong><small id="sourceText">—</small></div>
     </section>
 
     <section id="surveyNote" class="survey-note card">—</section>
 
     <section class="kpi-grid">
-      <article class="card kpi"><span>Base Viva actual</span><strong id="kpiBase">—</strong><small id="kpiBaseSub">—</small></article>
-      <article class="card kpi confirmed"><span>Ya inscritos</span><strong id="kpiInscritos">—</strong><small>confirmados a Ago-27</small></article>
-      <article class="card kpi"><span>Respondentes pendientes</span><strong id="kpiSurvey">—</strong><small id="kpiCoverage">—</small></article>
+      <article class="card kpi"><span>Base Viva actual</span><strong id="kpiBase">—</strong><small>alumnos que siguen en funnel</small></article>
+      <article class="card kpi"><span>Respondentes en Base Viva</span><strong id="kpiSurvey">—</strong><small id="kpiCoverage">—</small></article>
+      <article class="card kpi"><span>Pronóstico Base Viva</span><strong id="kpiBaseForecast">—</strong><small id="kpiBaseForecastSub">—</small></article>
+      <article class="card kpi confirmed"><span>Ya inscritos</span><strong id="kpiInscritos">—</strong><small id="kpiInscritosSub">—</small></article>
       <article class="card kpi accent"><span>Pronóstico total Ago-27</span><strong id="kpiCont">—</strong><small id="kpiContSub">—</small></article>
-      <article class="card kpi"><span>Oportunidades de convencimiento</span><strong id="kpiOpp">—</strong><small>solo alumnos pendientes · media-alta, alta o muy alta</small></article>
+      <article class="card kpi"><span>Oportunidades de convencimiento</span><strong id="kpiOpp">—</strong><small>entre quienes siguen en Base Viva</small></article>
     </section>
 
     <section class="campus-grid">
       <article class="card panel history-panel">
         <div class="panel-head">
-          <div><div class="section-kicker">EVOLUCIÓN</div><h2>Tasa histórica y referencia sobre Base Viva pendiente 2027</h2></div>
+          <div><div class="section-kicker">EVOLUCIÓN</div><h2>Tasa histórica de continuidad y referencia 2027</h2></div>
           <div class="state-wrap"><span id="stateBadge" class="state">—</span><small id="rangeText">—</small></div>
         </div>
         <div id="historyChart" class="history-chart"></div>
@@ -121,7 +122,7 @@
         <div id="studentEmpty" class="empty-state"><div class="empty-icon">⌕</div><h2>Selecciona una matrícula</h2><p>La ficha muestra probabilidad, respuestas, factores, barreras y oportunidad de convencimiento. No se muestran nombres.</p></div>
         <div id="studentDetail" class="hidden">
           <div class="student-hero">
-            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span class="badge live">Base Viva pendiente</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
+            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span class="badge live">Base Viva</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
             <div class="probability-card"><span>Probabilidad estimada de continuidad</span><strong id="studentProb">—</strong><div class="prob-track"><div id="studentProbBar"></div></div><div class="prob-meta"><span id="studentProp">—</span><span id="studentPct">—</span></div></div>
           </div>
 
@@ -166,7 +167,7 @@
 
     <section class="card panel campus-table-panel">
       <div class="panel-head"><div><div class="section-kicker">COMPARATIVO</div><h2>Resumen por campus</h2></div><small>Haz clic en una fila para abrir el campus.</small></div>
-      <div class="table-scroll"><table><thead><tr><th>Campus</th><th class="num">Base Viva</th><th class="num">Inscritos</th><th class="num">Pendientes</th><th class="num">Respondentes</th><th class="num">Esperados adicionales</th><th class="num">Pronóstico total</th><th class="num">Oportunidades</th><th>Lectura</th></tr></thead><tbody id="campusTableBody"></tbody></table></div>
+      <div class="table-scroll"><table><thead><tr><th>Campus</th><th class="num">Base Viva</th><th class="num">Respondentes en Base Viva</th><th class="num">Pronóstico Base Viva</th><th class="num">Inscritos (match encuesta)</th><th class="num">Pronóstico total</th><th class="num">Oportunidades</th><th>Lectura</th></tr></thead><tbody id="campusTableBody"></tbody></table></div>
     </section>
 
     <section class="card indicator-guide">
@@ -180,11 +181,11 @@
       <div class="guide-note"><strong>Semáforo de experiencia:</strong> menor a 7 = rojo · de 7 a 8.9 = amarillo · 9 o más = verde. Aplica a NPS, orgullo, seguridad e infraestructura.</div>
     </section>
 
-    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>Los inscritos confirmados se cuentan directamente. Para el pronóstico adicional se usa la Base Viva pendiente de cada campus, es decir, Base Viva actual menos cualquier matrícula que ya aparezca en INSCRITOS_2027.xlsx.</p></div><div><h3>Tasa de referencia</h3><p>Sobre los alumnos pendientes se usa el punto medio entre el promedio histórico ponderado 2024–2026 y el límite superior del modelo calibrado. El volumen final mostrado arriba suma inscritos confirmados + esperados adicionales.</p></div><div><h3>Interpretación</h3><p>Riesgo o mejora solo se declara cuando la diferencia contra 2026 es consistente con la composición de propensión del campus.</p></div></div></details>
+    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>La Base Viva ya representa a quienes siguen en el funnel. El pronóstico pendiente se calcula sobre esa Base Viva con la metodología vigente. De forma separada se cuentan los respondientes que ya aparecen en INSCRITOS_2027.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre la Base Viva actual + inscritos confirmados que hacen match con los respondientes de la encuesta. No se cuentan inscritos de otros universos que no estén en la hoja Alumnos.</p></div><div><h3>Interpretación</h3><p>Riesgo o mejora solo se declara cuando la diferencia contra 2026 es consistente con la composición de propensión del campus.</p></div></div></details>
   </main>
 
   <div id="errorBox" class="error-box hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=11.2"></script>
 </body>
 </html>
