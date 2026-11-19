@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Continuidad 2027 · Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11.2" />
-  <meta name="dashboard-version" content="v11.2-baseviva-plus-inscritos-match">
+  <link rel="stylesheet" href="styles.css?v=11.3" />
+  <meta name="dashboard-version" content="v11.3-all-respondents-status-propensity-filter">
 </head>
 <body>
   <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
@@ -50,6 +50,22 @@
           <option value="other">Resto / seguimiento</option>
         </select>
       </div>
+      <div class="control compact">
+        <label>Base Viva</label>
+        <select id="baseVivaFilter">
+          <option value="all">Todos</option>
+          <option value="yes">En Base Viva</option>
+          <option value="no">No en Base Viva</option>
+        </select>
+      </div>
+      <div class="control compact">
+        <label>Inscripción</label>
+        <select id="enrolledFilter">
+          <option value="all">Todos</option>
+          <option value="yes">Inscrito</option>
+          <option value="no">No inscrito</option>
+        </select>
+      </div>
       <div class="source-pill"><span class="dot"></span><strong>Seguimiento AD27</strong><small id="sourceText">—</small></div>
     </section>
 
@@ -67,7 +83,7 @@
     <section class="campus-grid">
       <article class="card panel history-panel">
         <div class="panel-head">
-          <div><div class="section-kicker">EVOLUCIÓN</div><h2>Tasa histórica de continuidad y referencia 2027</h2></div>
+          <div><div class="section-kicker">EVOLUCIÓN</div><h2>Tasa histórica de continuidad y proyección 2027</h2></div>
           <div class="state-wrap"><span id="stateBadge" class="state">—</span><small id="rangeText">—</small></div>
         </div>
         <div id="historyChart" class="history-chart"></div>
@@ -85,9 +101,10 @@
       </article>
 
       <article class="card panel">
-        <div class="panel-head"><div><div class="section-kicker">PROPENSIÓN RELATIVA</div><h2>Distribución de la cohorte</h2></div></div>
+        <div class="panel-head"><div><div class="section-kicker">PROPENSIÓN RELATIVA</div><h2>Distribución de todos los respondientes</h2></div></div>
         <div id="propensityBars" class="vertical-bars"></div>
-        <p class="muted">Se muestra cantidad de alumnos y porcentaje dentro de los respondentes activos.</p>
+        <div id="propensityFilters" class="propensity-filter-row"></div>
+        <p class="muted">Haz clic en una barra o categoría para filtrar el explorador de alumnos. El filtro se puede combinar con Base Viva e Inscripción.</p>
       </article>
     </section>
 
@@ -112,7 +129,7 @@
           <button id="copyOpportunitiesBtn" class="mini-btn secondary" type="button">Copiar matrículas</button>
           <button id="downloadOpportunitiesBtn" class="mini-btn secondary" type="button">Descargar CSV</button>
         </div>
-        <p class="opportunity-hint">Incluye prioridad de convencimiento Media-Alta, Alta o Muy alta del campus seleccionado.</p>
+        <p class="opportunity-hint">“Ver oportunidades” muestra únicamente alumnos que siguen en Base Viva, no están inscritos y tienen prioridad Media-Alta, Alta o Muy alta.</p>
         <div id="studentList" class="student-list"></div>
         <p id="listNote" class="muted list-note"></p>
         <p id="exportStatus" class="export-status" aria-live="polite"></p>
@@ -122,7 +139,7 @@
         <div id="studentEmpty" class="empty-state"><div class="empty-icon">⌕</div><h2>Selecciona una matrícula</h2><p>La ficha muestra probabilidad, respuestas, factores, barreras y oportunidad de convencimiento. No se muestran nombres.</p></div>
         <div id="studentDetail" class="hidden">
           <div class="student-hero">
-            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span class="badge live">Base Viva</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
+            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span id="studentBaseVivaBadge" class="badge">—</span><span id="studentInscritoBadge" class="badge">—</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
             <div class="probability-card"><span>Probabilidad estimada de continuidad</span><strong id="studentProb">—</strong><div class="prob-track"><div id="studentProbBar"></div></div><div class="prob-meta"><span id="studentProp">—</span><span id="studentPct">—</span></div></div>
           </div>
 
@@ -171,7 +188,7 @@
     </section>
 
     <section class="card indicator-guide">
-      <div class="panel-head"><div><div class="section-kicker">CÓMO LEER EL TABLERO</div><h2>Propensión y oportunidad de convencimiento</h2></div></div>
+      <div class="panel-head"><div><div class="section-kicker">CÓMO LEER EL TABLERO</div><h2>Propensión, estatus y oportunidad de convencimiento</h2></div></div>
       <div class="guide-grid">
         <div><h3>Propensión relativa</h3><p>Ubica al alumno frente al resto de los respondentes según el modelo principal. Muy baja, baja, media, alta y muy alta son grupos relativos; no equivalen directamente a una probabilidad.</p></div>
         <div><h3>Potencial estructural</h3><p>Ordena al alumno con un segundo modelo que excluye la prioridad declarada. Sirve para detectar perfiles favorables aunque hoy Tecmilenio no sea su primera opción.</p></div>
@@ -186,6 +203,6 @@
 
   <div id="errorBox" class="error-box hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=11.2"></script>
+  <script src="app.js?v=11.3"></script>
 </body>
 </html>

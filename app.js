@@ -1,4 +1,4 @@
-const state = { data:null, selectedCampus:'__ALL__', selectedStudent:null };
+const state = { data:null, selectedCampus:'__ALL__', selectedStudent:null, selectedPropensity:'all' };
 const $ = id => document.getElementById(id);
 const fmt = new Intl.NumberFormat('es-MX');
 const pct = (v,d=1) => (v===null||v===undefined||Number.isNaN(Number(v))) ? '—' : `${(Number(v)*100).toFixed(d)}%`;
@@ -226,6 +226,28 @@ async function fetchData(reload=false){
   });
 
   // =====================================================
+  // CAMPUS OPERATIVO DE TODOS LOS RESPONDIENTES
+  // Se usa para el explorador completo y para el denominador
+  // de la tasa proyectada 2027 por campus.
+  // Prioridad de fuente: Base Viva > Inscritos > Encuesta.
+  // =====================================================
+  const respondentIdsByCampus=new Map();
+  respondentById.forEach((info,mid)=>{
+    const vivaInfo=vivaById.get(mid);
+    const inscritoInfo=inscritosMatchedById.get(mid);
+
+    const campusNorm=
+      vivaInfo?.campus_norm ||
+      inscritoInfo?.campus_norm ||
+      info.campus_norm;
+
+    if(!respondentIdsByCampus.has(campusNorm)){
+      respondentIdsByCampus.set(campusNorm,new Set());
+    }
+    respondentIdsByCampus.get(campusNorm).add(mid);
+  });
+
+  // =====================================================
   // 4) MATCH RESPONDIENTES ∩ BASE VIVA
   // Esta es la ficha y la señal del modelo, igual que antes.
   // =====================================================
@@ -263,14 +285,15 @@ async function fetchData(reload=false){
     ...histByCampus.keys(),
     ...baseIdsByCampus.keys(),
     ...activeByCampus.keys(),
-    ...inscritosIdsByCampus.keys()
+    ...inscritosIdsByCampus.keys(),
+    ...respondentIdsByCampus.keys()
   ]);
 
   const campusNorms=[...campusSet]
     .filter(Boolean)
     .sort((a,b)=>displayCampus(a).localeCompare(displayCampus(b),'es'));
 
-  function summarizeGroup(norm,rows,histRows,baseCount,inscritosCount){
+  function summarizeGroup(norm,rows,histRows,baseCount,inscritosCount,respondentCount){
     const probs=rows.map(r=>asFloat(r['Prob_Continuidad_2027_Calibrada'])).filter(v=>v!==null).map(p=>Math.min(1,Math.max(0,p)));
     const sumProb=probs.reduce((a,b)=>a+b,0);
     const modelMean=probs.length?sumProb/probs.length:null;
@@ -296,6 +319,13 @@ async function fetchData(reload=false){
     const forecastTotal=cont===null?inscritosConfirmados:cont+inscritosConfirmados;
     const forecastTotalLow=contLo===null?inscritosConfirmados:contLo+inscritosConfirmados;
     const forecastTotalHigh=contHi===null?inscritosConfirmados:contHi+inscritosConfirmados;
+
+    // Para la gráfica de tendencia 2027:
+    // tasa proyectada = pronóstico total / total de respondientes.
+    const respondentTotal=Number(respondentCount||0);
+    const trendRate2027=respondentTotal?forecastTotal/respondentTotal:null;
+    const trendRateLow2027=respondentTotal?forecastTotalLow/respondentTotal:null;
+    const trendRateHigh2027=respondentTotal?forecastTotalHigh/respondentTotal:null;
 
     const propCounts=Object.fromEntries(PROP_ORDER.map(k=>[k,0]));
     rows.forEach(r=>{const v=cleanText(r['Propension_Relativa']);if(v in propCounts)propCounts[v]++;});
@@ -326,13 +356,17 @@ async function fetchData(reload=false){
     if(oppCount) explanation+=` Además, ${fmt.format(oppCount)} respondentes activos aparecen como oportunidad de convencimiento media-alta, alta o muy alta.`;
 
     const histAbs=histRows.length?historySummary(histRows):Array.from({length:6},(_,i)=>({year:2021+i,n:0,rate:null,continuers:0}));
-    histAbs.push({year:2027,n:operationalBase,rate:refRate,continuers:cont||0,forecast:true});
+    histAbs.push({year:2027,n:respondentTotal,rate:trendRate2027,continuers:forecastTotal||0,forecast:true});
     return {
       campus_norm:norm,
       campus:norm==='__ALL__'?'Todos los campus':displayCampus(norm),
       survey_n:rows.length,
       base_viva_n:Number(baseCount||0),
       inscritos_confirmados:inscritosConfirmados,
+      respondent_total_n:respondentTotal,
+      trend_rate_2027:trendRate2027,
+      trend_rate_low_2027:trendRateLow2027,
+      trend_rate_high_2027:trendRateHigh2027,
       operational_base:Number(operationalBase||0),
       operational_base_method:baseMethod,
       continuers_expected:cont,
@@ -352,7 +386,8 @@ async function fetchData(reload=false){
     activeByCampus.get(norm)||[],
     histByCampus.get(norm)||[],
     baseIdsByCampus.get(norm)?.size||0,
-    inscritosIdsByCampus.get(norm)?.size||0
+    inscritosIdsByCampus.get(norm)?.size||0,
+    respondentIdsByCampus.get(norm)?.size||0
   ));
 
   const overall=summarizeGroup(
@@ -360,7 +395,8 @@ async function fetchData(reload=false){
     active,
     historico,
     vivaById.size,
-    inscritosMatchedById.size
+    inscritosMatchedById.size,
+    respondentById.size
   );
 
   overall.operational_base=campusNorms.reduce((a,n)=>a+(summaries[n].operational_base||0),0);
@@ -371,21 +407,95 @@ async function fetchData(reload=false){
   overall.forecast_total=overall.continuers_expected+overall.inscritos_confirmados;
   overall.forecast_total_low=overall.continuers_low+overall.inscritos_confirmados;
   overall.forecast_total_high=overall.continuers_high+overall.inscritos_confirmados;
+  overall.respondent_total_n=respondentById.size;
+  overall.trend_rate_2027=overall.respondent_total_n?overall.forecast_total/overall.respondent_total_n:null;
+  overall.trend_rate_low_2027=overall.respondent_total_n?overall.forecast_total_low/overall.respondent_total_n:null;
+  overall.trend_rate_high_2027=overall.respondent_total_n?overall.forecast_total_high/overall.respondent_total_n:null;
   if(overall.operational_base) overall.forecast_rate=overall.continuers_expected/overall.operational_base;
-  if(overall.history?.length){ const last=overall.history[overall.history.length-1]; last.n=overall.operational_base;last.continuers=overall.continuers_expected;last.rate=overall.forecast_rate; }
+  if(overall.history?.length){
+    const last=overall.history[overall.history.length-1];
+    last.n=overall.respondent_total_n;
+    last.continuers=overall.forecast_total;
+    last.rate=overall.trend_rate_2027;
+  }
   const highCount=(overall.propensity||[]).filter(x=>['Alta','Muy alta'].includes(x.label)).reduce((a,x)=>a+x.count,0);
   const lowCount=(overall.propensity||[]).filter(x=>['Baja','Muy baja'].includes(x.label)).reduce((a,x)=>a+x.count,0);
   const highPct=overall.survey_n?highCount/overall.survey_n:0,lowPct=overall.survey_n?lowCount/overall.survey_n:0;
   overall.explanation=`Sobre la Base Viva actual de ${fmt.format(overall.operational_base)} alumnos se proyectan ${fmt.format(overall.continuers_expected)} continuadores. Además, ${fmt.format(overall.inscritos_confirmados)} respondientes hacen match con INSCRITOS_2027 y ya están confirmados. El pronóstico total es ${fmt.format(overall.forecast_total)}. Entre los respondentes que siguen en Base Viva, ${fmt.format(highCount)} (${(highPct*100).toFixed(0)}%) están en propensión alta/muy alta y ${fmt.format(lowCount)} (${(lowPct*100).toFixed(0)}%) en baja/muy baja. Se identifican ${fmt.format(overall.opportunity_count)} oportunidades de convencimiento media-alta, alta o muy alta.`;
   summaries['__ALL__']=overall;
 
-  const students=active.map(r=>{
-    const factors=Object.entries(FACTOR_LABELS).filter(([col])=>asFloat(r[col])===1).map(([,label])=>label);
-    const reasons=Object.entries(REASON_LABELS).filter(([col])=>asFloat(r[col])===1).map(([,label])=>label);
+  // =====================================================
+  // EXPLORADOR: CONSERVAR TODOS LOS RESPONDIENTES
+  // Ya no se eliminan quienes no hacen match con Base Viva.
+  // Cada matrícula recibe dos etiquetas independientes:
+  // - En Base Viva: Sí / No
+  // - Inscrito: Sí / No
+  // =====================================================
+  const students=[...respondentById.entries()].map(([mid,respondent])=>{
+    const r=respondent.row;
+    const vivaInfo=vivaById.get(mid);
+    const inscritoInfo=inscritosMatchedById.get(mid);
+
+    const campus=
+      vivaInfo?.campus ||
+      inscritoInfo?.campus ||
+      respondent.campus;
+
+    const campusNorm=
+      vivaInfo?.campus_norm ||
+      inscritoInfo?.campus_norm ||
+      respondent.campus_norm;
+
+    const factors=Object.entries(FACTOR_LABELS)
+      .filter(([col])=>asFloat(r[col])===1)
+      .map(([,label])=>label);
+
+    const reasons=Object.entries(REASON_LABELS)
+      .filter(([col])=>asFloat(r[col])===1)
+      .map(([,label])=>label);
+
     return {
-      matricula:r._matricula,campus:r._campus,campus_norm:r._campus_norm,prob:asFloat(r['Prob_Continuidad_2027_Calibrada']),propension:cleanText(r['Propension_Relativa']),percentil_global:asFloat(r['Percentil_Propension_Global']??r['Percentil_Propension']),percentil_campus:asFloat(r['Percentil_Propension_Campus']),potencial:cleanText(r['Potencial_Estructural']),percentil_estructural:asFloat(r['Percentil_Estructural']),brecha_oportunidad:asFloat(r['Brecha_Oportunidad']),prioridad_convencimiento:cleanText(r['Prioridad_Convencimiento']),oportunidad:cleanText(r['Oportunidad_Convencimiento']),lectura_oportunidad:cleanText(r['Lectura_Oportunidad']),resumen_individual:cleanText(r['Resumen_Individual']),cluster_id:asInt(r['Cluster_ID']),cluster_nombre:cleanText(r['Cluster_Nombre']),cluster_descripcion:cleanText(r['Cluster_Descripcion']),cluster_palanca:cleanText(r['Cluster_Palanca']),carrera:cleanText(r['¿Qué carrera te gustaría estudiar?']),planea_tecmilenio:cleanText(r['¿Planeas iniciar tus estudios profesionales en Tecmilenio?']),universidad:cleanText(r['¿En dónde planeas realizar tus estudios profesionales?']),programa_interes:cleanText(r['De la oferta institucional de carreras que ofrece Tecmilenio en todos sus campus a nivel nacional, ¿hay alguna que te interese? (Nota: posteriormente, acércate con tu asesor de admisiones para conoc']),modalidad:cleanText(r['modalidad_clases']),movilidad:cleanText(r['movilidad_ciudad']),prioridad:asFloat(r['prioridad_tecmilenio']),campus_interes:cleanText(r['¿En qué campus de Tecmilenio te gustaría estudiar tu carrera profesional?']),orientacion:cleanText(r['¿Te gustaría recibir una sesión de orientación vocacional personalizada?']),seguridad_carrera:asFloat(r['seguridad_carrera']),nps:asFloat(r['NPS']),orgullo:asFloat(r['orgullo']),seguridad_campus:asFloat(r['seguridad_campus']),infra:asFloat(r['Satisfaccion infra']),beca:asFloat(r['Beca']),programa_ofertado:asFloat(r['programa_ofertado']),factores:factors,barreras:reasons
+      matricula:mid,
+      campus,
+      campus_norm:campusNorm,
+      en_base_viva:!!vivaInfo,
+      inscrito:!!inscritoInfo,
+      prob:asFloat(r['Prob_Continuidad_2027_Calibrada']),
+      propension:cleanText(r['Propension_Relativa']),
+      percentil_global:asFloat(r['Percentil_Propension_Global']??r['Percentil_Propension']),
+      percentil_campus:asFloat(r['Percentil_Propension_Campus']),
+      potencial:cleanText(r['Potencial_Estructural']),
+      percentil_estructural:asFloat(r['Percentil_Estructural']),
+      brecha_oportunidad:asFloat(r['Brecha_Oportunidad']),
+      prioridad_convencimiento:cleanText(r['Prioridad_Convencimiento']),
+      oportunidad:cleanText(r['Oportunidad_Convencimiento']),
+      lectura_oportunidad:cleanText(r['Lectura_Oportunidad']),
+      resumen_individual:cleanText(r['Resumen_Individual']),
+      cluster_id:asInt(r['Cluster_ID']),
+      cluster_nombre:cleanText(r['Cluster_Nombre']),
+      cluster_descripcion:cleanText(r['Cluster_Descripcion']),
+      cluster_palanca:cleanText(r['Cluster_Palanca']),
+      carrera:cleanText(r['¿Qué carrera te gustaría estudiar?']),
+      planea_tecmilenio:cleanText(r['¿Planeas iniciar tus estudios profesionales en Tecmilenio?']),
+      universidad:cleanText(r['¿En dónde planeas realizar tus estudios profesionales?']),
+      programa_interes:cleanText(r['De la oferta institucional de carreras que ofrece Tecmilenio en todos sus campus a nivel nacional, ¿hay alguna que te interese? (Nota: posteriormente, acércate con tu asesor de admisiones para conoc']),
+      modalidad:cleanText(r['modalidad_clases']),
+      movilidad:cleanText(r['movilidad_ciudad']),
+      prioridad:asFloat(r['prioridad_tecmilenio']),
+      campus_interes:cleanText(r['¿En qué campus de Tecmilenio te gustaría estudiar tu carrera profesional?']),
+      orientacion:cleanText(r['¿Te gustaría recibir una sesión de orientación vocacional personalizada?']),
+      seguridad_carrera:asFloat(r['seguridad_carrera']),
+      nps:asFloat(r['NPS']),
+      orgullo:asFloat(r['orgullo']),
+      seguridad_campus:asFloat(r['seguridad_campus']),
+      infra:asFloat(r['Satisfaccion infra']),
+      beca:asFloat(r['Beca']),
+      programa_ofertado:asFloat(r['programa_ofertado']),
+      factores:factors,
+      barreras:reasons
     };
   });
+
 
   return {
     meta:{
@@ -397,11 +507,13 @@ async function fetchData(reload=false){
       inscritos_source_unique_total:inscritosSourceIds.size,
       inscritos_respondent_match_total:inscritosMatchedById.size,
       inscritos_overlap_base_viva:inscritosOverlapViva,
+      respondents_outside_base_viva:students.filter(s=>!s.en_base_viva).length,
+      respondents_not_enrolled:students.filter(s=>!s.inscrito).length,
       analysis_file:'base_continuidad_2027_dashboard.xlsx',
       base_viva_file:'BASE_VIVA.xlsx',
       inscritos_file:'INSCRITOS_2027.xlsx',
       loaded_at:new Date().toISOString(),
-      method_note:'La Base Viva se mantiene como universo operativo actual. El pronóstico de Base Viva se calcula con la misma metodología previa. Al resultado se suman únicamente las matrículas que hacen match entre los respondientes de la hoja Alumnos e INSCRITOS_2027.xlsx.'
+      method_note:'El explorador conserva a todos los respondientes de la hoja Alumnos. Cada matrícula se etiqueta según si aparece en BASE_VIVA.xlsx y si aparece en INSCRITOS_2027.xlsx. El pronóstico operativo se mantiene como pronóstico de Base Viva + inscritos con match. Para la gráfica de tendencia, la tasa 2027 usa pronóstico total dividido entre respondientes del dashboard.'
     },
     campuses:campusNorms.map(n=>summaries[n]),
     overall:summaries['__ALL__'],
@@ -450,16 +562,16 @@ function renderKPIs(s){
 
 function renderDataNotes(){
   const m=state.data.meta;
-  $('surveyNote').innerHTML=`De <strong>${fmt.format(m.respondent_unique_total)}</strong> respondientes únicos del dashboard, <strong>${fmt.format(m.matched_active)}</strong> hacen match con la Base Viva actual y son la señal del pronóstico pendiente. Por separado, <strong>${fmt.format(m.inscritos_respondent_match_total)}</strong> respondientes hacen match con INSCRITOS_2027 y se suman como continuidad ya confirmada. INSCRITOS_2027 contiene ${fmt.format(m.inscritos_source_unique_total)} matrículas únicas en total, pero las demás no se cuentan si no pertenecen a los respondientes del dashboard.`;
+  $('surveyNote').innerHTML=`El explorador conserva los <strong>${fmt.format(m.respondent_unique_total)} respondientes únicos</strong> del dashboard. De ellos, <strong>${fmt.format(m.matched_active)}</strong> están hoy en Base Viva y <strong>${fmt.format(m.inscritos_respondent_match_total)}</strong> ya hacen match con INSCRITOS_2027. Los demás también permanecen visibles y quedan etiquetados como “No en Base Viva” y/o “No inscrito”.`;
 
-  $('methodSurvey').textContent=`Pronóstico total = pronóstico actual sobre Base Viva + respondientes que hacen match con INSCRITOS_2027. Base Viva no se modifica ni se le vuelven a restar inscritos, porque esa fuente ya viene depurada del funnel.`;
+  $('methodSurvey').textContent=`Pronóstico total = pronóstico actual sobre Base Viva + respondientes que hacen match con INSCRITOS_2027. Para la tendencia 2027, la tasa proyectada se calcula como pronóstico total / respondientes del dashboard. El explorador no elimina registros: conserva todos los respondientes y permite filtrar por propensión y estado operativo.`;
 }
 
 function renderHistory(s){
   $('stateBadge').textContent=s.state;
   $('stateBadge').className=`state ${cssState(s.state)}`;
-  const rateLo=s.forecast_rate_low;
-  const rateHi=s.forecast_rate_high;
+  const rateLo=s.trend_rate_low_2027;
+  const rateHi=s.trend_rate_high_2027;
   $('rangeText').textContent=(rateLo==null||rateHi==null)?'—':`Rango tasa ${pct(rateLo)}–${pct(rateHi)}`;
 
   const data=s.history||[];
@@ -493,7 +605,7 @@ function renderHistory(s){
   });
 
   $('historyChart').innerHTML=`<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${grid}${histPolyline}${forecastLine}${marks}</svg>`;
-  $('historyTable').innerHTML=`<table class="history-mini"><thead><tr><th>Año</th>${data.map(d=>`<th>${d.year}</th>`).join('')}</tr></thead><tbody><tr><td>Egresados / base</td>${data.map(d=>`<td>${fmt.format(d.n||0)}</td>`).join('')}</tr><tr><td>Continuadores</td>${data.map(d=>`<td class="${d.forecast?'forecast':''}">${fmt.format(d.continuers||0)}</td>`).join('')}</tr><tr><td>Tasa</td>${data.map(d=>`<td>${d.rate==null?'—':pct(d.rate)}</td>`).join('')}</tr></tbody></table>`;
+  $('historyTable').innerHTML=`<table class="history-mini"><thead><tr><th>Año</th>${data.map(d=>`<th>${d.year}</th>`).join('')}</tr></thead><tbody><tr><td>Base / respondientes 2027</td>${data.map(d=>`<td>${fmt.format(d.n||0)}</td>`).join('')}</tr><tr><td>Continuadores</td>${data.map(d=>`<td class="${d.forecast?'forecast':''}">${fmt.format(d.continuers||0)}</td>`).join('')}</tr><tr><td>Tasa</td>${data.map(d=>`<td>${d.rate==null?'—':pct(d.rate)}</td>`).join('')}</tr></tbody></table>`;
   $('forecastExplanation').textContent=s.explanation;
 }
 
@@ -521,9 +633,59 @@ function renderClusterDescriptions(){
   }).join(''):'<p class="muted">No hay catálogo de clusters disponible.</p>';
 }
 
-function renderPropensity(s){
-  const rows=s.propensity||[]; const max=Math.max(1,...rows.map(r=>r.count));
-  $('propensityBars').innerHTML=rows.map(r=>`<div class="vbar"><span class="value">${fmt.format(r.count)}<br><small>${pct(r.pct)}</small></span><div class="bar" style="height:${Math.max(3,r.count/max*115)}px"></div><span class="label">${safe(r.label)}</span></div>`).join('');
+function propensityRowsForCampus(){
+  const students=studentsForCampus();
+  const counts=Object.fromEntries(PROP_ORDER.map(k=>[k,0]));
+  students.forEach(s=>{
+    if(s.propension in counts) counts[s.propension]++;
+  });
+  return PROP_ORDER.map(label=>({
+    label,
+    count:counts[label],
+    pct:students.length?counts[label]/students.length:0
+  }));
+}
+
+function setPropensityFilter(label,scrollToList=false){
+  state.selectedPropensity=label||'all';
+  state.selectedStudent=null;
+  renderPropensity();
+  renderStudentList();
+  renderStudentDetail();
+
+  if(scrollToList){
+    document.querySelector('.student-explorer')?.scrollIntoView({
+      behavior:'smooth',
+      block:'start'
+    });
+  }
+}
+
+function renderPropensity(){
+  const rows=propensityRowsForCampus();
+  const max=Math.max(1,...rows.map(r=>r.count));
+
+  $('propensityBars').innerHTML=rows.map(r=>`
+    <button class="vbar propensity-bar-btn ${state.selectedPropensity===r.label?'active':''}"
+            type="button"
+            data-propensity="${safe(r.label)}"
+            title="Ver alumnos con propensión ${safe(r.label)}">
+      <span class="value">${fmt.format(r.count)}<br><small>${pct(r.pct)}</small></span>
+      <span class="bar" style="height:${Math.max(3,r.count/max*115)}px"></span>
+      <span class="label">${safe(r.label)}</span>
+    </button>
+  `).join('');
+
+  $('propensityFilters').innerHTML=
+    `<button type="button" class="prop-filter-chip ${state.selectedPropensity==='all'?'active':''}" data-prop-filter="all">Todas</button>`+
+    rows.map(r=>`<button type="button" class="prop-filter-chip ${state.selectedPropensity===r.label?'active':''}" data-prop-filter="${safe(r.label)}">${safe(r.label)} · ${fmt.format(r.count)}</button>`).join('');
+
+  document.querySelectorAll('[data-propensity]').forEach(el=>{
+    el.addEventListener('click',()=>setPropensityFilter(el.dataset.propensity,true));
+  });
+  document.querySelectorAll('[data-prop-filter]').forEach(el=>{
+    el.addEventListener('click',()=>setPropensityFilter(el.dataset.propFilter,true));
+  });
 }
 
 function renderRank(id,rows){
@@ -547,16 +709,46 @@ function sortStudents(rows){
 }
 function visibleStudents(){
   let rows=studentsForCampus();
+
   const q=$('studentSearch').value.trim().toUpperCase();
   if(q) rows=rows.filter(s=>s.matricula.includes(q));
+
+  if(state.selectedPropensity!=='all'){
+    rows=rows.filter(s=>s.propension===state.selectedPropensity);
+  }
+
+  const baseFilter=$('baseVivaFilter').value;
+  if(baseFilter==='yes') rows=rows.filter(s=>s.en_base_viva);
+  else if(baseFilter==='no') rows=rows.filter(s=>!s.en_base_viva);
+
+  const enrolledFilter=$('enrolledFilter').value;
+  if(enrolledFilter==='yes') rows=rows.filter(s=>s.inscrito);
+  else if(enrolledFilter==='no') rows=rows.filter(s=>!s.inscrito);
+
   const f=$('opportunityFilter').value;
-  if(f==='opportunity') rows=rows.filter(s=>OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)||['si','sí'].includes(String(s.oportunidad||'').toLowerCase()));
-  else if(['Muy alta','Alta','Media-Alta'].includes(f)) rows=rows.filter(s=>s.prioridad_convencimiento===f);
-  else if(f==='other') rows=rows.filter(s=>!OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)&&!['si','sí'].includes(String(s.oportunidad||'').toLowerCase()));
+  if(f==='opportunity'){
+    rows=rows.filter(s=>OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)||['si','sí'].includes(String(s.oportunidad||'').toLowerCase()));
+  }else if(['Muy alta','Alta','Media-Alta'].includes(f)){
+    rows=rows.filter(s=>s.prioridad_convencimiento===f);
+  }else if(f==='other'){
+    rows=rows.filter(s=>!OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)&&!['si','sí'].includes(String(s.oportunidad||'').toLowerCase()));
+  }
+
   return sortStudents(rows);
 }
+
 function opportunityStudentsForCampus(){
-  return sortStudents(studentsForCampus().filter(s=>OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)||['si','sí'].includes(String(s.oportunidad||'').toLowerCase())));
+  // Oportunidades operativas: siguen en Base Viva y todavía no están inscritas.
+  return sortStudents(
+    studentsForCampus().filter(s=>
+      s.en_base_viva &&
+      !s.inscrito &&
+      (
+        OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento) ||
+        ['si','sí'].includes(String(s.oportunidad||'').toLowerCase())
+      )
+    )
+  );
 }
 
 function csvEscape(v){
@@ -567,10 +759,10 @@ function csvEscape(v){
 function downloadOpportunityCSV(){
   const rows=opportunityStudentsForCampus();
   if(!rows.length){ setExportStatus('No hay matrículas con oportunidad en el filtro de campus actual.'); return; }
-  const header=['Matricula','Campus','Prioridad_Convencimiento','Propension_Relativa','Potencial_Estructural','Brecha_Oportunidad','Programa_Ofertado'];
+  const header=['Matricula','Campus','En_Base_Viva','Inscrito','Prioridad_Convencimiento','Propension_Relativa','Potencial_Estructural','Brecha_Oportunidad','Programa_Ofertado'];
   const lines=[header.join(',')];
   rows.forEach(r=>lines.push([
-    r.matricula,r.campus,r.prioridad_convencimiento,r.propension,r.potencial,
+    r.matricula,r.campus,r.en_base_viva?'Sí':'No',r.inscrito?'Sí':'No',r.prioridad_convencimiento,r.propension,r.potencial,
     r.brecha_oportunidad==null?'':Number(r.brecha_oportunidad).toFixed(1),
     r.programa_ofertado===1?'Sí':r.programa_ofertado===0?'No':''
   ].map(csvEscape).join(',')));
@@ -602,7 +794,18 @@ function setExportStatus(msg){
 
 function renderStudentList(){
   const rows=visibleStudents(); $('studentCount').textContent=fmt.format(rows.length); const shown=rows.slice(0,300);
-  $('studentList').innerHTML=shown.map(s=>`<button class="student-row ${state.selectedStudent===s.matricula?'active':''}" data-id="${safe(s.matricula)}"><span class="id">${safe(s.matricula)}</span><span class="prob">${pct(s.prob)}</span><span class="campus">${safe(s.campus)}</span><span class="opp-tag ${OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)?'hot':''}">${safe(s.prioridad_convencimiento||'Seguimiento')}</span></button>`).join('')||'<p class="muted">No hay matrículas con los filtros actuales.</p>';
+  $('studentList').innerHTML=shown.map(s=>`
+    <button class="student-row ${state.selectedStudent===s.matricula?'active':''}" data-id="${safe(s.matricula)}">
+      <span class="id">${safe(s.matricula)}</span>
+      <span class="prob">${pct(s.prob)}</span>
+      <span class="campus">${safe(s.campus)}</span>
+      <span class="student-status-line">
+        <span class="mini-status ${s.en_base_viva?'yes':'no'}">${s.en_base_viva?'En Base Viva':'No Base Viva'}</span>
+        <span class="mini-status ${s.inscrito?'enrolled':'no'}">${s.inscrito?'Inscrito':'No inscrito'}</span>
+      </span>
+      <span class="opp-tag ${OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)?'hot':''}">${safe(s.prioridad_convencimiento||'Seguimiento')}</span>
+    </button>
+  `).join('')||'<p class="muted">No hay matrículas con los filtros actuales.</p>';
   $('listNote').textContent=rows.length>300?`Mostrando 300 de ${fmt.format(rows.length)}. Usa el buscador para encontrar una matrícula.`:'';
   document.querySelectorAll('.student-row').forEach(el=>el.addEventListener('click',()=>{state.selectedStudent=el.dataset.id;renderStudentList();renderStudentDetail();}));
 }
@@ -612,7 +815,18 @@ function applyMetricCard(cardId,val){const el=$(cardId);el.classList.remove('red
 function renderStudentDetail(){
   const s=state.data.students.find(x=>x.matricula===state.selectedStudent);
   $('studentEmpty').classList.toggle('hidden',!!s); $('studentDetail').classList.toggle('hidden',!s); if(!s)return;
-  setText('studentCampus',s.campus); setText('studentMatricula',s.matricula); setText('studentProb',pct(s.prob)); $('studentProbBar').style.width=`${Math.max(0,Math.min(100,(s.prob||0)*100))}%`; setText('studentProp',`Propensión ${s.propension||'—'}`); setText('studentPct',s.percentil_global==null?'—':`Percentil ${Math.round(s.percentil_global)}`);
+  setText('studentCampus',s.campus);
+  setText('studentMatricula',s.matricula);
+
+  const baseBadge=$('studentBaseVivaBadge');
+  baseBadge.textContent=s.en_base_viva?'En Base Viva':'No en Base Viva';
+  baseBadge.className=`badge ${s.en_base_viva?'live':'inactive'}`;
+
+  const enrolledBadge=$('studentInscritoBadge');
+  enrolledBadge.textContent=s.inscrito?'Inscrito':'No inscrito';
+  enrolledBadge.className=`badge ${s.inscrito?'enrolled':'inactive'}`;
+
+  setText('studentProb',pct(s.prob)); $('studentProbBar').style.width=`${Math.max(0,Math.min(100,(s.prob||0)*100))}%`; setText('studentProp',`Propensión ${s.propension||'—'}`); setText('studentPct',s.percentil_global==null?'—':`Percentil ${Math.round(s.percentil_global)}`);
   setText('studentPotential',s.potencial); setText('studentPotentialPct',s.percentil_estructural==null?'—':Math.round(s.percentil_estructural)); setText('studentConvPriority',s.prioridad_convencimiento); setText('studentOppGap',s.brecha_oportunidad==null?'—':`${s.brecha_oportunidad>=0?'+':''}${Number(s.brecha_oportunidad).toFixed(1)} pctiles`); setText('studentOpportunity',s.oportunidad);
   setText('studentCareer',s.carrera); setText('studentPlansTec',s.planea_tecmilenio); setText('studentUniversity',s.universidad); setText('studentDesiredCampus',s.campus_interes); setText('studentModality',s.modalidad); setText('studentMobility',s.movilidad); setText('studentPriority',s.prioridad==null?'—':`${s.prioridad} / 5`); setText('studentOffered',s.programa_ofertado===1?'Sí se oferta':s.programa_ofertado===0?'No se oferta':'—'); $('studentOffered').className=s.programa_ofertado===1?'positive':s.programa_ofertado===0?'negative':''; setText('studentCareerCertainty',s.seguridad_carrera==null?'—':`${s.seguridad_carrera} / 5`); setText('studentOrientation',s.orientacion); setText('studentScholarship',scholarship(s.beca)); setText('studentProgramInterest',s.programa_interes);
   setText('studentNps',one(s.nps)); setText('studentPride',one(s.orgullo)); setText('studentSecurity',one(s.seguridad_campus)); setText('studentInfra',one(s.infra)); applyMetricCard('studentNpsCard',s.nps); applyMetricCard('studentPrideCard',s.orgullo); applyMetricCard('studentSecurityCard',s.seguridad_campus); applyMetricCard('studentInfraCard',s.infra);
@@ -621,20 +835,69 @@ function renderStudentDetail(){
 
 function renderCampusTable(){
   const rows=state.data.campuses; $('campusTableBody').innerHTML=rows.map(s=>{ const high=(s.propensity||[]).filter(x=>['Alta','Muy alta'].includes(x.label)).reduce((a,x)=>a+x.count,0); const highPct=s.survey_n?high/s.survey_n:0; return `<tr data-campus="${safe(s.campus_norm)}"><td><strong>${safe(s.campus)}</strong></td><td class="num">${fmt.format(s.base_viva_n||0)}</td><td class="num">${fmt.format(s.survey_n||0)}</td><td class="num">${s.continuers_expected==null?'—':fmt.format(s.continuers_expected)}</td><td class="num">${fmt.format(s.inscritos_confirmados||0)}</td><td class="num"><strong>${s.forecast_total==null?'—':fmt.format(s.forecast_total)}</strong></td><td class="num">${fmt.format(s.opportunity_count||0)}</td><td><span class="table-state ${cssState(s.state)}">${safe(s.state)}</span></td></tr>`; }).join('');
-  document.querySelectorAll('[data-campus]').forEach(tr=>tr.addEventListener('click',()=>{state.selectedCampus=tr.dataset.campus;state.selectedStudent=null;$('campusSelect').value=state.selectedCampus;$('studentSearch').value='';$('opportunityFilter').value='all';renderAll();window.scrollTo({top:0,behavior:'smooth'});}));
+  document.querySelectorAll('[data-campus]').forEach(tr=>tr.addEventListener('click',()=>{
+    state.selectedCampus=tr.dataset.campus;
+    state.selectedStudent=null;
+    state.selectedPropensity='all';
+    $('campusSelect').value=state.selectedCampus;
+    $('studentSearch').value='';
+    $('opportunityFilter').value='all';
+    $('baseVivaFilter').value='all';
+    $('enrolledFilter').value='all';
+    renderAll();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }));
 }
 
 function renderAll(){
-  const s=currentSummary(); renderDataNotes(); renderKPIs(s); renderHistory(s); renderClusters(s); renderPropensity(s); renderRank('topFactors',s.factors); renderRank('topReasons',s.reasons); renderExperience(s); renderStudentList(); renderStudentDetail(); renderCampusTable();
+  const s=currentSummary(); renderDataNotes(); renderKPIs(s); renderHistory(s); renderClusters(s); renderPropensity(); renderRank('topFactors',s.factors); renderRank('topReasons',s.reasons); renderExperience(s); renderStudentList(); renderStudentDetail(); renderCampusTable();
 }
 
 function bind(){
-  $('campusSelect').addEventListener('change',e=>{state.selectedCampus=e.target.value;state.selectedStudent=null;$('studentSearch').value='';$('opportunityFilter').value='all';renderAll();});
-  $('studentSearch').addEventListener('input',renderStudentList); $('studentOrder').addEventListener('change',renderStudentList); $('opportunityFilter').addEventListener('change',renderStudentList);
-  $('filterOpportunitiesBtn').addEventListener('click',()=>{$('opportunityFilter').value='opportunity';$('studentSearch').value='';state.selectedStudent=null;renderStudentList();renderStudentDetail();setExportStatus(`${fmt.format(opportunityStudentsForCampus().length)} oportunidades encontradas.`);});
+  $('campusSelect').addEventListener('change',e=>{
+    state.selectedCampus=e.target.value;
+    state.selectedStudent=null;
+    state.selectedPropensity='all';
+    $('studentSearch').value='';
+    $('opportunityFilter').value='all';
+    $('baseVivaFilter').value='all';
+    $('enrolledFilter').value='all';
+    renderAll();
+  });
+
+  $('studentSearch').addEventListener('input',renderStudentList);
+  $('studentOrder').addEventListener('change',renderStudentList);
+  $('opportunityFilter').addEventListener('change',renderStudentList);
+  $('baseVivaFilter').addEventListener('change',renderStudentList);
+  $('enrolledFilter').addEventListener('change',renderStudentList);
+
+  $('filterOpportunitiesBtn').addEventListener('click',()=>{
+    state.selectedPropensity='all';
+    $('opportunityFilter').value='opportunity';
+    $('baseVivaFilter').value='yes';
+    $('enrolledFilter').value='no';
+    $('studentSearch').value='';
+    state.selectedStudent=null;
+    renderPropensity();
+    renderStudentList();
+    renderStudentDetail();
+    setExportStatus(`${fmt.format(opportunityStudentsForCampus().length)} oportunidades activas encontradas.`);
+  });
   $('copyOpportunitiesBtn').addEventListener('click',copyOpportunityMatriculas);
   $('downloadOpportunitiesBtn').addEventListener('click',downloadOpportunityCSV);
-  $('reloadBtn').addEventListener('click',async()=>{try{$('loading').classList.remove('hidden');state.data=await fetchData(true);state.selectedCampus='__ALL__';state.selectedStudent=null;campusOptions();renderAll();}catch(e){showError(e.message);}finally{$('loading').classList.add('hidden');}});
+  $('reloadBtn').addEventListener('click',async()=>{try{
+    $('loading').classList.remove('hidden');
+    state.data=await fetchData(true);
+    state.selectedCampus='__ALL__';
+    state.selectedStudent=null;
+    state.selectedPropensity='all';
+    campusOptions();
+    $('studentSearch').value='';
+    $('opportunityFilter').value='all';
+    $('baseVivaFilter').value='all';
+    $('enrolledFilter').value='all';
+    renderAll();
+  }catch(e){showError(e.message);}finally{$('loading').classList.add('hidden');}});
 }
 function showError(msg){$('errorBox').textContent=msg;$('errorBox').classList.remove('hidden');setTimeout(()=>$('errorBox').classList.add('hidden'),9000);}
 

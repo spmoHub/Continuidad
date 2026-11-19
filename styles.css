@@ -228,3 +228,112 @@ body{font-size:clamp(12px,.82vw,14px)}
 @media(max-width:1250px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.kpi-grid{grid-template-columns:1fr}}
+
+
+/* =========================================================
+   V11.3 · TODOS LOS RESPONDIENTES + ESTATUS + FILTRO PROPENSIÓN
+   ========================================================= */
+
+.toolbar{
+  grid-template-columns:minmax(150px,1fr) minmax(180px,1.25fr) repeat(4,minmax(135px,.8fr)) auto;
+}
+
+.propensity-bar-btn{
+  appearance:none;
+  border:0;
+  background:transparent;
+  padding:0;
+  cursor:pointer;
+  font-family:inherit;
+  color:inherit;
+}
+.propensity-bar-btn:hover .bar,
+.propensity-bar-btn.active .bar{
+  outline:3px solid rgba(25,128,93,.18);
+  outline-offset:2px;
+}
+.propensity-bar-btn.active .label{
+  color:#126f50;
+  font-weight:850;
+}
+.propensity-filter-row{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  margin-top:9px;
+}
+.prop-filter-chip{
+  appearance:none;
+  border:1px solid #d9e5e0;
+  background:#fff;
+  color:#53675f;
+  border-radius:999px;
+  padding:4px 8px;
+  font:700 8px/1.2 inherit;
+  cursor:pointer;
+}
+.prop-filter-chip:hover{
+  border-color:#91c9b4;
+  background:#f4fbf8;
+}
+.prop-filter-chip.active{
+  background:#e3f4ec;
+  color:#126f50;
+  border-color:#a9dac6;
+}
+
+.student-row{
+  grid-template-columns:1fr auto;
+}
+.student-status-line{
+  display:flex;
+  flex-wrap:wrap;
+  gap:3px;
+  grid-column:1/2;
+}
+.mini-status{
+  font-size:6.8px;
+  line-height:1.1;
+  font-weight:800;
+  border-radius:999px;
+  padding:2px 5px;
+  border:1px solid transparent;
+  white-space:nowrap;
+}
+.mini-status.yes{
+  color:#126f50;
+  background:#e7f6ef;
+  border-color:#c5e6d7;
+}
+.mini-status.enrolled{
+  color:#286b96;
+  background:#eaf4fb;
+  border-color:#c8deee;
+}
+.mini-status.no{
+  color:#6f7e78;
+  background:#f1f4f3;
+  border-color:#dde5e2;
+}
+
+.badge.inactive{
+  background:#f0f3f2;
+  color:#6b7b75;
+}
+.badge.enrolled{
+  background:#e6f2fb;
+  color:#286b96;
+}
+
+@media(max-width:1450px){
+  .toolbar{grid-template-columns:repeat(4,minmax(150px,1fr))}
+  .source-pill{grid-column:span 2}
+}
+@media(max-width:900px){
+  .toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .source-pill{grid-column:1/-1}
+}
+@media(max-width:560px){
+  .toolbar{grid-template-columns:1fr}
+  .source-pill{grid-column:auto}
+}
