@@ -401,3 +401,112 @@ body{font-size:clamp(12px,.82vw,14px)}
 @media(max-width:1100px){.validation-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:720px){.validation-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.validation-model-read{grid-template-columns:1fr}}
 @media(max-width:520px){.validation-kpis{grid-template-columns:1fr}}
+
+
+/* =========================================================
+   V11.6 · PESTAÑAS + VALIDACIÓN SOBRE TODOS LOS RESPONDIENTES
+   ========================================================= */
+
+.dashboard-tabs{
+  display:flex;
+  gap:6px;
+  padding:6px;
+  margin-bottom:12px;
+  width:max-content;
+  max-width:100%;
+}
+
+.dashboard-tab{
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  color:#64776f;
+  border-radius:10px;
+  padding:8px 14px;
+  font:800 9px/1.2 inherit;
+  cursor:pointer;
+  transition:.18s ease;
+}
+
+.dashboard-tab:hover{
+  background:#f4f8f6;
+  color:#31584a;
+}
+
+.dashboard-tab.active{
+  background:#e7f5ef;
+  color:#137255;
+  border-color:#c4e4d6;
+  box-shadow:0 1px 2px rgba(28,88,65,.06);
+}
+
+.dashboard-tab-panel{
+  display:none;
+}
+
+.dashboard-tab-panel.active{
+  display:block;
+}
+
+.validation-main-panel{
+  margin-top:0;
+}
+
+.validation-intro{
+  margin:4px 0 12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#f7faf9;
+  border:1px solid #e0e9e5;
+  color:#5d7169;
+  font-size:9px;
+  line-height:1.5;
+}
+
+.validation-kpis-main{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+}
+
+.validation-funnel-strip{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:8px 0 10px;
+}
+
+.validation-funnel-strip>div{
+  padding:9px 10px;
+  border-radius:11px;
+  border:1px solid #e7e3ef;
+  background:#fbf9fe;
+}
+
+.validation-funnel-strip span{
+  display:block;
+  color:#776b88;
+  font-size:8px;
+  font-weight:750;
+  line-height:1.25;
+}
+
+.validation-funnel-strip strong{
+  display:block;
+  margin-top:3px;
+  color:#51445f;
+  font-size:17px;
+}
+
+@media(max-width:1100px){
+  .validation-kpis-main{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+@media(max-width:720px){
+  .dashboard-tabs{width:100%}
+  .dashboard-tab{flex:1}
+  .validation-kpis-main{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .validation-funnel-strip{grid-template-columns:1fr}
+}
+
+@media(max-width:520px){
+  .validation-kpis-main{grid-template-columns:1fr}
+}

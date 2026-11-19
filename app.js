@@ -1,4 +1,4 @@
-const state = { data:null, selectedCampus:'__ALL__', selectedStudent:null, selectedPropensity:'all' };
+const state = { data:null, selectedCampus:'__ALL__', selectedStudent:null, selectedPropensity:'all', selectedDashboardTab:'forecast' };
 const $ = id => document.getElementById(id);
 const fmt = new Intl.NumberFormat('es-MX');
 const pct = (v,d=1) => (v===null||v===undefined||Number.isNaN(Number(v))) ? '—' : `${(Number(v)*100).toFixed(d)}%`;
@@ -278,15 +278,25 @@ async function fetchData(reload=false){
 
   // =====================================================
   // VALIDACIÓN PARCIAL DEL MODELO
-  // Universo: respondientes ∩ BASE_VIVA_INICIAL.
-  // Inscrito = resultado positivo ya observado.
+  //
+  // Universo del modelo = TODOS los respondientes de Alumnos.
+  // Positivos observados = TODOS los respondientes que hacen
+  // match con INSCRITOS_2027, aunque no hayan estado en la
+  // Base Viva inicial.
+  //
+  // BASE_VIVA_INICIAL se conserva como una foto del funnel,
+  // NO como filtro para evaluar el modelo.
+  //
+  // Inscrito = positivo observado.
   // No inscrito todavía NO se interpreta como negativo final.
   // =====================================================
+
   const initialMatchedById=new Map();
 
   respondentById.forEach((respondent,mid)=>{
     const initialInfo=vivaInicialById.get(mid);
     if(!initialInfo) return;
+
     initialMatchedById.set(mid,{
       campus:initialInfo.campus || respondent.campus,
       campus_norm:initialInfo.campus_norm || respondent.campus_norm
@@ -301,65 +311,154 @@ async function fetchData(reload=false){
     initialIdsByCampus.get(info.campus_norm).add(mid);
   });
 
+  // Campus de cada respondiente para la validación:
+  // prioridad Base Viva actual > Inscritos > encuesta.
+  const validationRespondentIdsByCampus=new Map();
+
+  respondentById.forEach((respondent,mid)=>{
+    const vivaInfo=vivaById.get(mid);
+    const inscritoInfo=inscritosMatchedById.get(mid);
+
+    const campusNorm=
+      vivaInfo?.campus_norm ||
+      inscritoInfo?.campus_norm ||
+      respondent.campus_norm;
+
+    if(!validationRespondentIdsByCampus.has(campusNorm)){
+      validationRespondentIdsByCampus.set(campusNorm,new Set());
+    }
+    validationRespondentIdsByCampus.get(campusNorm).add(mid);
+  });
+
   function validationSummary(ids){
     const mids=[...(ids||[])];
-    const propRows=PROP_ORDER.map(label=>({label,initial:0,enrolled:0,current_viva:0,outside_not_enrolled:0,predicted_sum:0,predicted_n:0}));
+
+    const propRows=PROP_ORDER.map(label=>({
+      label,
+      respondents:0,
+      enrolled:0,
+      enrolled_from_initial:0,
+      enrolled_outside_initial:0,
+      in_initial:0,
+      current_viva:0,
+      outside_not_enrolled:0,
+      predicted_sum:0,
+      predicted_n:0
+    }));
+
     const propMap=new Map(propRows.map(r=>[r.label,r]));
 
-    let enrolled=0,currentViva=0,outsideNotEnrolled=0,overlapCurrentEnrolled=0,enrolledHigh=0;
-    let initialProbSum=0,initialProbN=0,enrolledProbSum=0,enrolledProbN=0;
+    let enrolled=0;
+    let enrolledFromInitial=0;
+    let enrolledOutsideInitial=0;
+    let inInitial=0;
+    let currentViva=0;
+    let outsideNotEnrolled=0;
+    let overlapCurrentEnrolled=0;
+    let enrolledHigh=0;
+
+    let respondentProbSum=0,respondentProbN=0;
+    let enrolledProbSum=0,enrolledProbN=0;
 
     mids.forEach(mid=>{
       const respondent=respondentById.get(mid);
       if(!respondent) return;
+
       const row=respondent.row;
       const prop=cleanText(row['Propension_Relativa']);
       const prob=asFloat(row['Prob_Continuidad_2027_Calibrada']);
+
       const isEnrolled=inscritosMatchedById.has(mid);
       const isCurrent=vivaById.has(mid);
+      const wasInitial=vivaInicialById.has(mid);
 
-      if(prob!==null){initialProbSum+=prob;initialProbN++;}
+      if(prob!==null){
+        respondentProbSum+=prob;
+        respondentProbN++;
+      }
+
+      if(wasInitial) inInitial++;
+
       if(isEnrolled){
         enrolled++;
-        if(prob!==null){enrolledProbSum+=prob;enrolledProbN++;}
-        if(['Alta','Muy alta'].includes(prop)) enrolledHigh++;
+        if(wasInitial) enrolledFromInitial++;
+        else enrolledOutsideInitial++;
+
+        if(prob!==null){
+          enrolledProbSum+=prob;
+          enrolledProbN++;
+        }
+
+        if(['Alta','Muy alta'].includes(prop)){
+          enrolledHigh++;
+        }
       }
+
       if(isCurrent) currentViva++;
-      if(isEnrolled&&isCurrent) overlapCurrentEnrolled++;
-      if(!isEnrolled&&!isCurrent) outsideNotEnrolled++;
+      if(isEnrolled && isCurrent) overlapCurrentEnrolled++;
+      if(!isEnrolled && !isCurrent) outsideNotEnrolled++;
 
       const p=propMap.get(prop);
       if(p){
-        p.initial++;
-        if(isEnrolled)p.enrolled++;
-        if(isCurrent)p.current_viva++;
-        if(!isEnrolled&&!isCurrent)p.outside_not_enrolled++;
-        if(prob!==null){p.predicted_sum+=prob;p.predicted_n++;}
+        p.respondents++;
+        if(wasInitial) p.in_initial++;
+
+        if(isEnrolled){
+          p.enrolled++;
+          if(wasInitial) p.enrolled_from_initial++;
+          else p.enrolled_outside_initial++;
+        }
+
+        if(isCurrent) p.current_viva++;
+        if(!isEnrolled && !isCurrent) p.outside_not_enrolled++;
+
+        if(prob!==null){
+          p.predicted_sum+=prob;
+          p.predicted_n++;
+        }
       }
     });
 
     return {
-      initial_total:mids.length,
+      respondent_total:mids.length,
+      initial_total:inInitial,
       enrolled,
+      enrolled_from_initial:enrolledFromInitial,
+      enrolled_outside_initial:enrolledOutsideInitial,
       current_viva:currentViva,
       outside_not_enrolled:outsideNotEnrolled,
       overlap_current_enrolled:overlapCurrentEnrolled,
+
+      // Validación parcial: inscritos observados / respondientes.
       observed_conversion:mids.length?enrolled/mids.length:0,
+
       enrolled_high_share:enrolled?enrolledHigh/enrolled:0,
-      avg_predicted_initial:initialProbN?initialProbSum/initialProbN:null,
+      avg_predicted_respondents:respondentProbN?respondentProbSum/respondentProbN:null,
       avg_predicted_enrolled:enrolledProbN?enrolledProbSum/enrolledProbN:null,
+
       propensity:propRows.map(r=>({
-        label:r.label,initial:r.initial,enrolled:r.enrolled,current_viva:r.current_viva,
+        label:r.label,
+        respondents:r.respondents,
+        in_initial:r.in_initial,
+        enrolled:r.enrolled,
+        enrolled_from_initial:r.enrolled_from_initial,
+        enrolled_outside_initial:r.enrolled_outside_initial,
+        current_viva:r.current_viva,
         outside_not_enrolled:r.outside_not_enrolled,
-        observed_conversion:r.initial?r.enrolled/r.initial:0,
+        observed_conversion:r.respondents?r.enrolled/r.respondents:0,
         avg_predicted:r.predicted_n?r.predicted_sum/r.predicted_n:null
       }))
     };
   }
 
   const validationByCampus={};
-  initialIdsByCampus.forEach((ids,norm)=>{validationByCampus[norm]=validationSummary(ids);});
-  const validationOverall=validationSummary(new Set(initialMatchedById.keys()));
+
+  validationRespondentIdsByCampus.forEach((ids,norm)=>{
+    validationByCampus[norm]=validationSummary(ids);
+  });
+
+  const validationOverall=
+    validationSummary(new Set(respondentById.keys()));
 
   // =====================================================
   // CAMPUS OPERATIVO DE TODOS LOS RESPONDIENTES
@@ -656,7 +755,7 @@ async function fetchData(reload=false){
       base_viva_inicial_total:vivaInicialById.size,
       base_viva_inicial_respondent_match:initialMatchedById.size,
       loaded_at:new Date().toISOString(),
-      method_note:'El explorador conserva a todos los respondientes de la hoja Alumnos. Cada matrícula se etiqueta según si aparece en BASE_VIVA_INICIAL.xlsx, BASE_VIVA.xlsx e INSCRITOS_2027.xlsx. El pronóstico operativo se mantiene sin cambios: pronóstico de Base Viva + inscritos con match. BASE_VIVA_INICIAL.xlsx se usa únicamente para validación parcial del modelo.'
+      method_note:'El explorador conserva a todos los respondientes de la hoja Alumnos. El pronóstico operativo se mantiene sin cambios: pronóstico de Base Viva + inscritos con match. Para la validación parcial del modelo se usan todos los respondientes y todos los inscritos que hacen match con la encuesta; BASE_VIVA_INICIAL.xlsx se conserva como fotografía adicional del funnel, no como filtro de inscritos.'
     },
     campuses:campusNorms.map(n=>summaries[n]),
     overall:summaries['__ALL__'],
@@ -706,11 +805,36 @@ function renderKPIs(s){
 
 function currentValidation(){
   if(!state.data?.validation) return null;
-  if(state.selectedCampus==='__ALL__') return state.data.validation.overall;
+
+  if(state.selectedCampus==='__ALL__'){
+    return state.data.validation.overall;
+  }
+
   return state.data.validation.by_campus?.[state.selectedCampus] || {
-    initial_total:0,enrolled:0,current_viva:0,outside_not_enrolled:0,overlap_current_enrolled:0,
-    observed_conversion:0,enrolled_high_share:0,avg_predicted_initial:null,avg_predicted_enrolled:null,
-    propensity:PROP_ORDER.map(label=>({label,initial:0,enrolled:0,current_viva:0,outside_not_enrolled:0,observed_conversion:0,avg_predicted:null}))
+    respondent_total:0,
+    initial_total:0,
+    enrolled:0,
+    enrolled_from_initial:0,
+    enrolled_outside_initial:0,
+    current_viva:0,
+    outside_not_enrolled:0,
+    overlap_current_enrolled:0,
+    observed_conversion:0,
+    enrolled_high_share:0,
+    avg_predicted_respondents:null,
+    avg_predicted_enrolled:null,
+    propensity:PROP_ORDER.map(label=>({
+      label,
+      respondents:0,
+      in_initial:0,
+      enrolled:0,
+      enrolled_from_initial:0,
+      enrolled_outside_initial:0,
+      current_viva:0,
+      outside_not_enrolled:0,
+      observed_conversion:0,
+      avg_predicted:null
+    }))
   };
 }
 
@@ -718,31 +842,72 @@ function renderValidation(){
   const v=currentValidation();
   if(!v) return;
 
-  setText('valInitial',fmt.format(v.initial_total||0));
+  setText('valRespondents',fmt.format(v.respondent_total||0));
   setText('valEnrolled',fmt.format(v.enrolled||0));
   setText('valConversion',pct(v.observed_conversion));
+
+  setText('valInitial',fmt.format(v.initial_total||0));
+  setText('valEnrolledInitial',fmt.format(v.enrolled_from_initial||0));
+  setText('valEnrolledOutside',fmt.format(v.enrolled_outside_initial||0));
+
   setText('valCurrent',fmt.format(v.current_viva||0));
   setText('valOutside',fmt.format(v.outside_not_enrolled||0));
   setText('valHighShare',pct(v.enrolled_high_share));
-  setText('valAvgInitial',pct(v.avg_predicted_initial));
+
+  setText('valAvgRespondents',pct(v.avg_predicted_respondents));
   setText('valAvgEnrolled',pct(v.avg_predicted_enrolled));
 
   const rows=v.propensity||[];
+
   $('validationTableBody').innerHTML=rows.map(r=>`
     <tr>
       <td><strong>${safe(r.label)}</strong></td>
-      <td class="num">${fmt.format(r.initial||0)}</td>
+      <td class="num">${fmt.format(r.respondents||0)}</td>
       <td class="num">${fmt.format(r.enrolled||0)}</td>
       <td class="num"><strong>${pct(r.observed_conversion)}</strong></td>
-      <td class="num">${fmt.format(r.current_viva||0)}</td>
-      <td class="num">${fmt.format(r.outside_not_enrolled||0)}</td>
+      <td class="num">${fmt.format(r.in_initial||0)}</td>
+      <td class="num">${fmt.format(r.enrolled_outside_initial||0)}</td>
       <td class="num">${pct(r.avg_predicted)}</td>
-    </tr>`).join('');
+    </tr>
+  `).join('');
 
-  const campusText=state.selectedCampus==='__ALL__'?'todos los campus':`el campus ${safe(currentSummary().campus)}`;
+  const campusText=
+    state.selectedCampus==='__ALL__'
+      ? 'todos los campus'
+      : `el campus ${safe(currentSummary().campus)}`;
+
   const overlap=v.overlap_current_enrolled||0;
-  $('validationNote').innerHTML=`Validación parcial sobre <strong>${fmt.format(v.initial_total||0)} respondientes</strong> que hacían match con la Base Viva inicial en ${campusText}. Un inscrito ya es un resultado positivo observado; un alumno que todavía no se ha inscrito <strong>no se considera todavía un negativo final</strong>.`+(overlap?` <strong>Auditoría:</strong> ${fmt.format(overlap)} matrícula(s) aparecen simultáneamente en Base Viva actual e Inscritos.`:'');
+
+  $('validationNote').innerHTML=
+    `Validación parcial sobre <strong>${fmt.format(v.respondent_total||0)} respondientes</strong> de ${campusText}. `+
+    `Se contabilizan los <strong>${fmt.format(v.enrolled||0)} inscritos observados</strong> que hacen match con la encuesta, `+
+    `sin exigir que hayan estado en la Base Viva inicial. De ellos, ${fmt.format(v.enrolled_from_initial||0)} sí estaban en la Base Viva inicial y `+
+    `${fmt.format(v.enrolled_outside_initial||0)} no estaban en esa fotografía inicial. `+
+    `Un inscrito ya es un positivo observado; un alumno que todavía no se ha inscrito <strong>no se considera todavía un negativo final</strong>.`+
+    (overlap
+      ? ` <strong>Auditoría:</strong> ${fmt.format(overlap)} matrícula(s) aparecen simultáneamente en Base Viva actual e Inscritos.`
+      : '');
 }
+
+function setDashboardTab(tab){
+  state.selectedDashboardTab=tab==='validation'?'validation':'forecast';
+
+  const isValidation=state.selectedDashboardTab==='validation';
+
+  $('forecastTab').classList.toggle('active',!isValidation);
+  $('validationTab').classList.toggle('active',isValidation);
+
+  $('tabForecast').classList.toggle('active',!isValidation);
+  $('tabValidation').classList.toggle('active',isValidation);
+
+  $('tabForecast').setAttribute('aria-selected',String(!isValidation));
+  $('tabValidation').setAttribute('aria-selected',String(isValidation));
+
+  if(isValidation){
+    renderValidation();
+  }
+}
+
 
 function renderDataNotes(){
   const m=state.data.meta;
@@ -1046,6 +1211,9 @@ function renderAll(){
 }
 
 function bind(){
+  $('tabForecast').addEventListener('click',()=>setDashboardTab('forecast'));
+  $('tabValidation').addEventListener('click',()=>setDashboardTab('validation'));
+
   $('campusSelect').addEventListener('change',e=>{
     state.selectedCampus=e.target.value;
     state.selectedStudent=null;
@@ -1083,12 +1251,14 @@ function bind(){
     state.selectedCampus='__ALL__';
     state.selectedStudent=null;
     state.selectedPropensity='all';
+    state.selectedDashboardTab='forecast';
     campusOptions();
     $('studentSearch').value='';
     $('opportunityFilter').value='all';
     $('baseVivaFilter').value='all';
     $('enrolledFilter').value='all';
     renderAll();
+    setDashboardTab(state.selectedDashboardTab);
   }catch(e){showError(e.message);}finally{$('loading').classList.add('hidden');}});
 }
 function showError(msg){$('errorBox').textContent=msg;$('errorBox').classList.remove('hidden');setTimeout(()=>$('errorBox').classList.add('hidden'),9000);}

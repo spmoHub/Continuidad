@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Continuidad 2027 · Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11.5" />
-  <meta name="dashboard-version" content="v11.5-base-viva-inicial-validation">
+  <link rel="stylesheet" href="styles.css?v=11.6" />
+  <meta name="dashboard-version" content="v11.6-validation-all-respondents-tabs">
 </head>
 <body>
   <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva inicial, Base Viva actual e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
@@ -71,6 +71,17 @@
 
     <section id="surveyNote" class="survey-note card">—</section>
 
+    <nav class="dashboard-tabs card" role="tablist" aria-label="Vistas del dashboard">
+      <button id="tabForecast" class="dashboard-tab active" type="button" role="tab" aria-selected="true" aria-controls="forecastTab">
+        Pronóstico y seguimiento
+      </button>
+      <button id="tabValidation" class="dashboard-tab" type="button" role="tab" aria-selected="false" aria-controls="validationTab">
+        Validación del modelo
+      </button>
+    </nav>
+
+    <div id="forecastTab" class="dashboard-tab-panel active" role="tabpanel" aria-labelledby="tabForecast">
+
     <section class="kpi-grid">
       <article class="card kpi"><span>Base Viva actual</span><strong id="kpiBase">—</strong><small>alumnos que siguen en funnel</small></article>
       <article class="card kpi"><span>Respondentes en Base Viva</span><strong id="kpiSurvey">—</strong><small id="kpiCoverage">—</small></article>
@@ -106,30 +117,6 @@
         <div id="propensityFilters" class="propensity-filter-row"></div>
         <p class="muted">Haz clic en una barra o categoría para filtrar el explorador de alumnos. El filtro se puede combinar con Base Viva e Inscripción.</p>
       </article>
-    </section>
-
-    <section class="card panel validation-panel">
-      <div class="panel-head validation-head">
-        <div><div class="section-kicker">VALIDACIÓN DEL MODELO EN VIVO</div><h2>¿Cómo están convirtiendo los respondientes de la Base Viva inicial?</h2></div>
-        <span class="badge initial">Validación parcial</span>
-      </div>
-      <div class="validation-kpis">
-        <div><span>Respondientes en Base Viva inicial</span><strong id="valInitial">—</strong></div>
-        <div><span>Ya inscritos</span><strong id="valEnrolled">—</strong><small id="valConversion">—</small></div>
-        <div><span>Siguen en Base Viva</span><strong id="valCurrent">—</strong></div>
-        <div><span>Fuera de Base Viva y no inscritos</span><strong id="valOutside">—</strong></div>
-        <div><span>Inscritos que eran Alta/Muy alta</span><strong id="valHighShare">—</strong></div>
-      </div>
-      <div class="validation-model-read">
-        <div><span>Probabilidad promedio · Base inicial</span><strong id="valAvgInitial">—</strong></div>
-        <div><span>Probabilidad promedio · Ya inscritos</span><strong id="valAvgEnrolled">—</strong></div>
-      </div>
-      <div class="table-scroll validation-table-wrap">
-        <table class="validation-table"><thead><tr>
-          <th>Propensión</th><th class="num">Base inicial</th><th class="num">Inscritos</th><th class="num">Conversión observada</th><th class="num">Sigue Base Viva</th><th class="num">Fuera / no inscrito</th><th class="num">Prob. promedio modelo</th>
-        </tr></thead><tbody id="validationTableBody"></tbody></table>
-      </div>
-      <p id="validationNote" class="validation-note">—</p>
     </section>
 
     <section class="signals-grid">
@@ -241,11 +228,99 @@
       <div class="guide-note"><strong>Semáforo de experiencia:</strong> menor a 7 = rojo · de 7 a 8.9 = amarillo · 9 o más = verde. Aplica a NPS, orgullo, seguridad e infraestructura.</div>
     </section>
 
-    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>La Base Viva ya representa a quienes siguen en el funnel. El pronóstico pendiente se calcula sobre esa Base Viva con la metodología vigente. De forma separada se cuentan los respondientes que ya aparecen en INSCRITOS_2027.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre la Base Viva actual + inscritos confirmados que hacen match con los respondientes de la encuesta. No se cuentan inscritos de otros universos que no estén en la hoja Alumnos.</p></div><div><h3>Validación en vivo</h3><p>BASE_VIVA_INICIAL.xlsx se usa como foto de referencia. Se compara únicamente con respondientes del dashboard para observar inscripción por propensión. Es una validación parcial mientras el proceso siga abierto.</p></div></div></details>
+    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>La Base Viva ya representa a quienes siguen en el funnel. El pronóstico pendiente se calcula sobre esa Base Viva con la metodología vigente. De forma separada se cuentan los respondientes que ya aparecen en INSCRITOS_2027.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre la Base Viva actual + inscritos confirmados que hacen match con los respondientes de la encuesta. No se cuentan inscritos de otros universos que no estén en la hoja Alumnos.</p></div><div><h3>Validación en vivo</h3><p>La validación parcial usa todos los respondientes de la encuesta y todos los inscritos que hacen match con ellos. BASE_VIVA_INICIAL.xlsx se conserva como fotografía del funnel y no limita los positivos observados.</p></div></div></details>
+    </div>
+
+    <div id="validationTab" class="dashboard-tab-panel" role="tabpanel" aria-labelledby="tabValidation">
+      <section class="card panel validation-panel validation-main-panel">
+        <div class="panel-head validation-head">
+          <div>
+            <div class="section-kicker">VALIDACIÓN DEL MODELO EN VIVO</div>
+            <h2>¿Los alumnos que el modelo ubicó con mayor propensión están convirtiendo más?</h2>
+          </div>
+          <span class="badge initial">Validación parcial</span>
+        </div>
+
+        <p class="validation-intro">
+          Esta vista usa como universo a <strong>todos los respondientes de la encuesta</strong>.
+          Los positivos observados son todos los respondientes que ya hacen match con
+          <strong>INSCRITOS_2027</strong>, aunque no hayan aparecido en la Base Viva inicial.
+        </p>
+
+        <div class="validation-kpis validation-kpis-main">
+          <div>
+            <span>Respondientes del modelo</span>
+            <strong id="valRespondents">—</strong>
+          </div>
+          <div>
+            <span>Ya inscritos</span>
+            <strong id="valEnrolled">—</strong>
+            <small id="valConversion">—</small>
+          </div>
+          <div>
+            <span>Inscritos que estaban en Base Viva inicial</span>
+            <strong id="valEnrolledInitial">—</strong>
+          </div>
+          <div>
+            <span>Inscritos fuera de Base Viva inicial</span>
+            <strong id="valEnrolledOutside">—</strong>
+          </div>
+          <div>
+            <span>Inscritos que eran Alta/Muy alta</span>
+            <strong id="valHighShare">—</strong>
+          </div>
+        </div>
+
+        <div class="validation-funnel-strip">
+          <div>
+            <span>Respondientes en Base Viva inicial</span>
+            <strong id="valInitial">—</strong>
+          </div>
+          <div>
+            <span>Siguen en Base Viva actual</span>
+            <strong id="valCurrent">—</strong>
+          </div>
+          <div>
+            <span>Fuera de Base Viva y no inscritos</span>
+            <strong id="valOutside">—</strong>
+          </div>
+        </div>
+
+        <div class="validation-model-read">
+          <div>
+            <span>Probabilidad promedio · Todos los respondientes</span>
+            <strong id="valAvgRespondents">—</strong>
+          </div>
+          <div>
+            <span>Probabilidad promedio · Ya inscritos</span>
+            <strong id="valAvgEnrolled">—</strong>
+          </div>
+        </div>
+
+        <div class="table-scroll validation-table-wrap">
+          <table class="validation-table">
+            <thead>
+              <tr>
+                <th>Propensión</th>
+                <th class="num">Respondientes</th>
+                <th class="num">Inscritos</th>
+                <th class="num">Conversión observada</th>
+                <th class="num">En Base Viva inicial</th>
+                <th class="num">Inscritos fuera base inicial</th>
+                <th class="num">Prob. promedio modelo</th>
+              </tr>
+            </thead>
+            <tbody id="validationTableBody"></tbody>
+          </table>
+        </div>
+
+        <p id="validationNote" class="validation-note">—</p>
+      </section>
+    </div>
   </main>
 
   <div id="errorBox" class="error-box hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=11.5"></script>
+  <script src="app.js?v=11.6"></script>
 </body>
 </html>
