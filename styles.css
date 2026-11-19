@@ -337,3 +337,48 @@ body{font-size:clamp(12px,.82vw,14px)}
   .toolbar{grid-template-columns:1fr}
   .source-pill{grid-column:auto}
 }
+
+
+/* =========================================================
+   V11.4 · RESULTADO REAL DE INSCRIPCIÓN
+   ========================================================= */
+.enrollment-result{
+  margin-top:14px;
+  padding:12px;
+  border:1px solid #cbdfe9;
+  background:linear-gradient(180deg,#f9fcfe,#f3f8fb);
+  border-radius:14px;
+}
+.enrollment-result-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:9px;
+}
+.enrollment-result-head strong{
+  display:block;
+  margin-top:2px;
+  color:#244f68;
+  font-size:10px;
+}
+.enrollment-grid{
+  margin-top:0;
+}
+.enrollment-card{
+  border-color:#d4e5ee;
+  background:#fff;
+}
+.enrollment-card span{
+  color:#607985;
+}
+.enrollment-card strong{
+  color:#245f7d;
+}
+.enrollment-result.not-enrolled{
+  opacity:.72;
+  background:#f7f9f8;
+  border-color:#e0e7e4;
+}
+.enrollment-result.not-enrolled .enrollment-card strong{
+  color:#7b8a84;
+}

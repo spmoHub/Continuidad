@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Continuidad 2027 · Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11.3" />
-  <meta name="dashboard-version" content="v11.3-all-respondents-status-propensity-filter">
+  <link rel="stylesheet" href="styles.css?v=11.4" />
+  <meta name="dashboard-version" content="v11.4-enrollment-program-campus">
 </head>
 <body>
   <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
@@ -166,6 +166,25 @@
             <div class="info-card"><span>Programa de interés declarado</span><strong id="studentProgramInterest">—</strong></div>
           </div>
 
+          <div id="studentEnrollmentResult" class="enrollment-result">
+            <div class="enrollment-result-head">
+              <div>
+                <span class="section-kicker">RESULTADO DE INSCRIPCIÓN</span>
+                <strong>Información observada en INSCRITOS_2027</strong>
+              </div>
+            </div>
+            <div class="student-info-grid enrollment-grid">
+              <div class="info-card enrollment-card">
+                <span>Programa en el que se inscribió</span>
+                <strong id="studentEnrolledProgram">—</strong>
+              </div>
+              <div class="info-card enrollment-card">
+                <span>Campus en el que se inscribió</span>
+                <strong id="studentEnrolledCampus">—</strong>
+              </div>
+            </div>
+          </div>
+
           <div class="student-experience">
             <div id="studentNpsCard" class="metric-chip"><span>NPS</span><strong id="studentNps">—</strong></div>
             <div id="studentPrideCard" class="metric-chip"><span>Orgullo</span><strong id="studentPride">—</strong></div>
@@ -203,6 +222,6 @@
 
   <div id="errorBox" class="error-box hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=11.3"></script>
+  <script src="app.js?v=11.4"></script>
 </body>
 </html>

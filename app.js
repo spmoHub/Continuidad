@@ -202,6 +202,12 @@ async function fetchData(reload=false){
     if(!respondent) return;
 
     const campusInscrito=r['Campus']??r['Escuela: Campus: Nombre de la cuenta']??'';
+    const programaInscrito=
+      r['Programa de Interés'] ??
+      r['Programa de interes'] ??
+      r['Programa de Interes'] ??
+      '';
+
     const campus=campusInscrito
       ? displayCampus(campusInscrito)
       : respondent.campus;
@@ -210,11 +216,24 @@ async function fetchData(reload=false){
       ? normalizeCampus(campusInscrito)
       : respondent.campus_norm;
 
-    if(!inscritosMatchedById.has(mid)){
+    const existing=inscritosMatchedById.get(mid);
+
+    // Si hay filas duplicadas para una matrícula, conservamos el primer match,
+    // pero completamos Campus/Programa si la primera fila venía vacía.
+    if(!existing){
       inscritosMatchedById.set(mid,{
         campus,
-        campus_norm:campusNorm
+        campus_norm:campusNorm,
+        campus_inscrito:cleanText(campusInscrito)||campus,
+        programa_inscrito:cleanText(programaInscrito)
       });
+    }else{
+      if(!existing.campus_inscrito && campusInscrito){
+        existing.campus_inscrito=cleanText(campusInscrito);
+      }
+      if(!existing.programa_inscrito && programaInscrito){
+        existing.programa_inscrito=cleanText(programaInscrito);
+      }
     }
   });
 
@@ -460,6 +479,8 @@ async function fetchData(reload=false){
       campus_norm:campusNorm,
       en_base_viva:!!vivaInfo,
       inscrito:!!inscritoInfo,
+      campus_inscrito:inscritoInfo?.campus_inscrito||'',
+      programa_inscrito:inscritoInfo?.programa_inscrito||'',
       prob:asFloat(r['Prob_Continuidad_2027_Calibrada']),
       propension:cleanText(r['Propension_Relativa']),
       percentil_global:asFloat(r['Percentil_Propension_Global']??r['Percentil_Propension']),
@@ -829,6 +850,10 @@ function renderStudentDetail(){
   setText('studentProb',pct(s.prob)); $('studentProbBar').style.width=`${Math.max(0,Math.min(100,(s.prob||0)*100))}%`; setText('studentProp',`Propensión ${s.propension||'—'}`); setText('studentPct',s.percentil_global==null?'—':`Percentil ${Math.round(s.percentil_global)}`);
   setText('studentPotential',s.potencial); setText('studentPotentialPct',s.percentil_estructural==null?'—':Math.round(s.percentil_estructural)); setText('studentConvPriority',s.prioridad_convencimiento); setText('studentOppGap',s.brecha_oportunidad==null?'—':`${s.brecha_oportunidad>=0?'+':''}${Number(s.brecha_oportunidad).toFixed(1)} pctiles`); setText('studentOpportunity',s.oportunidad);
   setText('studentCareer',s.carrera); setText('studentPlansTec',s.planea_tecmilenio); setText('studentUniversity',s.universidad); setText('studentDesiredCampus',s.campus_interes); setText('studentModality',s.modalidad); setText('studentMobility',s.movilidad); setText('studentPriority',s.prioridad==null?'—':`${s.prioridad} / 5`); setText('studentOffered',s.programa_ofertado===1?'Sí se oferta':s.programa_ofertado===0?'No se oferta':'—'); $('studentOffered').className=s.programa_ofertado===1?'positive':s.programa_ofertado===0?'negative':''; setText('studentCareerCertainty',s.seguridad_carrera==null?'—':`${s.seguridad_carrera} / 5`); setText('studentOrientation',s.orientacion); setText('studentScholarship',scholarship(s.beca)); setText('studentProgramInterest',s.programa_interes);
+
+  setText('studentEnrolledProgram',s.inscrito?s.programa_inscrito:'');
+  setText('studentEnrolledCampus',s.inscrito?s.campus_inscrito:'');
+  $('studentEnrollmentResult').classList.toggle('not-enrolled',!s.inscrito);
   setText('studentNps',one(s.nps)); setText('studentPride',one(s.orgullo)); setText('studentSecurity',one(s.seguridad_campus)); setText('studentInfra',one(s.infra)); applyMetricCard('studentNpsCard',s.nps); applyMetricCard('studentPrideCard',s.orgullo); applyMetricCard('studentSecurityCard',s.seguridad_campus); applyMetricCard('studentInfraCard',s.infra);
   setText('studentClusterId',s.cluster_id); setText('studentClusterName',s.cluster_nombre); setText('studentClusterDescription',s.cluster_descripcion); setText('studentClusterLever',s.cluster_palanca); renderChips('studentFactors',s.factores); renderChips('studentReasons',s.barreras,true); setText('studentReading',s.lectura_oportunidad); setText('studentSummary',s.resumen_individual);
 }
