@@ -12,6 +12,7 @@ const trafficText = v => { if(v===null||v===undefined||Number.isNaN(Number(v))) 
 
 const ANALYSIS_FILE = './base_continuidad_2027_dashboard.xlsx';
 const BASE_VIVA_FILE = './BASE_VIVA.xlsx';
+const BASE_VIVA_INICIAL_FILE = './BASE_VIVA_INICIAL.xlsx';
 const INSCRITOS_FILE = './INSCRITOS_2027.xlsx';
 
 const FACTOR_LABELS = {
@@ -113,9 +114,10 @@ async function fetchData(reload=false){
     if(res.ok){ const json=await res.json(); if(json.ok) return json.data; }
     throw new Error('No se pudo cargar el lector de Excel. En GitHub Pages revisa la conexión; en local usa abrir_tablero.bat.');
   }
-  const [analysis,vivaBook,inscritosBook]=await Promise.all([
+  const [analysis,vivaBook,vivaInicialBook,inscritosBook]=await Promise.all([
     readWorkbook(ANALYSIS_FILE,reload),
     readWorkbook(BASE_VIVA_FILE,reload),
+    readWorkbook(BASE_VIVA_INICIAL_FILE,reload),
     readWorkbook(INSCRITOS_FILE,reload)
   ]);
 
@@ -123,12 +125,14 @@ async function fetchData(reload=false){
   const historico=findSheet(analysis,'Historico campus','Historico_Campus');
   const catalogo=findSheet(analysis,'Catalogo_clusters','Catalogo Clusters');
   const vivaRows=vivaBook[Object.keys(vivaBook)[0]]||[];
+  const vivaInicialRows=vivaInicialBook[Object.keys(vivaInicialBook)[0]]||[];
 
   let inscritosRows=findSheet(inscritosBook,'Inscritos_2027','Inscritos 2027','Inscritos');
   if(!inscritosRows.length) inscritosRows=inscritosBook[Object.keys(inscritosBook)[0]]||[];
 
   if(!alumnosAll.length) throw new Error('El archivo analítico no contiene la hoja Alumnos o está vacía.');
   if(!vivaRows.length) throw new Error('La Base Viva está vacía.');
+  if(!vivaInicialRows.length) throw new Error('BASE_VIVA_INICIAL.xlsx está vacío o no se pudo leer.');
   if(!inscritosRows.length) throw new Error('INSCRITOS_2027.xlsx está vacío o no se pudo identificar su hoja.');
 
   // =====================================================
@@ -149,6 +153,33 @@ async function fetchData(reload=false){
     const campus=r['Campus']??r['Escuela: Campus: Nombre de la cuenta']??'';
     if(!vivaById.has(mid)){
       vivaById.set(mid,{
+        campus:displayCampus(campus),
+        campus_norm:normalizeCampus(campus)
+      });
+    }
+  });
+
+  // =====================================================
+  // 1B) BASE VIVA INICIAL
+  // Foto de referencia para validar el comportamiento del modelo.
+  // NO interviene en el pronóstico operativo.
+  // =====================================================
+  const vivaInicialById=new Map();
+
+  vivaInicialRows.forEach(r=>{
+    const mid=normalizeId(
+      r['Matrícula'] ??
+      r['Matricula'] ??
+      r['Número de matrícula'] ??
+      r['Numero de matrícula'] ??
+      r['Numero de matricula']
+    );
+    if(!mid)return;
+
+    const campus=r['Campus']??r['Escuela: Campus: Nombre de la cuenta']??'';
+
+    if(!vivaInicialById.has(mid)){
+      vivaInicialById.set(mid,{
         campus:displayCampus(campus),
         campus_norm:normalizeCampus(campus)
       });
@@ -246,6 +277,91 @@ async function fetchData(reload=false){
   });
 
   // =====================================================
+  // VALIDACIÓN PARCIAL DEL MODELO
+  // Universo: respondientes ∩ BASE_VIVA_INICIAL.
+  // Inscrito = resultado positivo ya observado.
+  // No inscrito todavía NO se interpreta como negativo final.
+  // =====================================================
+  const initialMatchedById=new Map();
+
+  respondentById.forEach((respondent,mid)=>{
+    const initialInfo=vivaInicialById.get(mid);
+    if(!initialInfo) return;
+    initialMatchedById.set(mid,{
+      campus:initialInfo.campus || respondent.campus,
+      campus_norm:initialInfo.campus_norm || respondent.campus_norm
+    });
+  });
+
+  const initialIdsByCampus=new Map();
+  initialMatchedById.forEach((info,mid)=>{
+    if(!initialIdsByCampus.has(info.campus_norm)){
+      initialIdsByCampus.set(info.campus_norm,new Set());
+    }
+    initialIdsByCampus.get(info.campus_norm).add(mid);
+  });
+
+  function validationSummary(ids){
+    const mids=[...(ids||[])];
+    const propRows=PROP_ORDER.map(label=>({label,initial:0,enrolled:0,current_viva:0,outside_not_enrolled:0,predicted_sum:0,predicted_n:0}));
+    const propMap=new Map(propRows.map(r=>[r.label,r]));
+
+    let enrolled=0,currentViva=0,outsideNotEnrolled=0,overlapCurrentEnrolled=0,enrolledHigh=0;
+    let initialProbSum=0,initialProbN=0,enrolledProbSum=0,enrolledProbN=0;
+
+    mids.forEach(mid=>{
+      const respondent=respondentById.get(mid);
+      if(!respondent) return;
+      const row=respondent.row;
+      const prop=cleanText(row['Propension_Relativa']);
+      const prob=asFloat(row['Prob_Continuidad_2027_Calibrada']);
+      const isEnrolled=inscritosMatchedById.has(mid);
+      const isCurrent=vivaById.has(mid);
+
+      if(prob!==null){initialProbSum+=prob;initialProbN++;}
+      if(isEnrolled){
+        enrolled++;
+        if(prob!==null){enrolledProbSum+=prob;enrolledProbN++;}
+        if(['Alta','Muy alta'].includes(prop)) enrolledHigh++;
+      }
+      if(isCurrent) currentViva++;
+      if(isEnrolled&&isCurrent) overlapCurrentEnrolled++;
+      if(!isEnrolled&&!isCurrent) outsideNotEnrolled++;
+
+      const p=propMap.get(prop);
+      if(p){
+        p.initial++;
+        if(isEnrolled)p.enrolled++;
+        if(isCurrent)p.current_viva++;
+        if(!isEnrolled&&!isCurrent)p.outside_not_enrolled++;
+        if(prob!==null){p.predicted_sum+=prob;p.predicted_n++;}
+      }
+    });
+
+    return {
+      initial_total:mids.length,
+      enrolled,
+      current_viva:currentViva,
+      outside_not_enrolled:outsideNotEnrolled,
+      overlap_current_enrolled:overlapCurrentEnrolled,
+      observed_conversion:mids.length?enrolled/mids.length:0,
+      enrolled_high_share:enrolled?enrolledHigh/enrolled:0,
+      avg_predicted_initial:initialProbN?initialProbSum/initialProbN:null,
+      avg_predicted_enrolled:enrolledProbN?enrolledProbSum/enrolledProbN:null,
+      propensity:propRows.map(r=>({
+        label:r.label,initial:r.initial,enrolled:r.enrolled,current_viva:r.current_viva,
+        outside_not_enrolled:r.outside_not_enrolled,
+        observed_conversion:r.initial?r.enrolled/r.initial:0,
+        avg_predicted:r.predicted_n?r.predicted_sum/r.predicted_n:null
+      }))
+    };
+  }
+
+  const validationByCampus={};
+  initialIdsByCampus.forEach((ids,norm)=>{validationByCampus[norm]=validationSummary(ids);});
+  const validationOverall=validationSummary(new Set(initialMatchedById.keys()));
+
+  // =====================================================
   // CAMPUS OPERATIVO DE TODOS LOS RESPONDIENTES
   // Se usa para el explorador completo y para el denominador
   // de la tasa proyectada 2027 por campus.
@@ -306,7 +422,8 @@ async function fetchData(reload=false){
     ...baseIdsByCampus.keys(),
     ...activeByCampus.keys(),
     ...inscritosIdsByCampus.keys(),
-    ...respondentIdsByCampus.keys()
+    ...respondentIdsByCampus.keys(),
+    ...initialIdsByCampus.keys()
   ]);
 
   const campusNorms=[...campusSet]
@@ -478,6 +595,7 @@ async function fetchData(reload=false){
       matricula:mid,
       campus,
       campus_norm:campusNorm,
+      en_base_viva_inicial:vivaInicialById.has(mid),
       en_base_viva:!!vivaInfo,
       inscrito:!!inscritoInfo,
       campus_inscrito:inscritoInfo?.campus_inscrito||'',
@@ -534,12 +652,16 @@ async function fetchData(reload=false){
       analysis_file:'base_continuidad_2027_dashboard.xlsx',
       base_viva_file:'BASE_VIVA.xlsx',
       inscritos_file:'INSCRITOS_2027.xlsx',
+      base_viva_inicial_file:'BASE_VIVA_INICIAL.xlsx',
+      base_viva_inicial_total:vivaInicialById.size,
+      base_viva_inicial_respondent_match:initialMatchedById.size,
       loaded_at:new Date().toISOString(),
-      method_note:'El explorador conserva a todos los respondientes de la hoja Alumnos. Cada matrícula se etiqueta según si aparece en BASE_VIVA.xlsx y si aparece en INSCRITOS_2027.xlsx. El pronóstico operativo se mantiene como pronóstico de Base Viva + inscritos con match. Para la gráfica de tendencia, la tasa 2027 usa pronóstico total dividido entre respondientes del dashboard.'
+      method_note:'El explorador conserva a todos los respondientes de la hoja Alumnos. Cada matrícula se etiqueta según si aparece en BASE_VIVA_INICIAL.xlsx, BASE_VIVA.xlsx e INSCRITOS_2027.xlsx. El pronóstico operativo se mantiene sin cambios: pronóstico de Base Viva + inscritos con match. BASE_VIVA_INICIAL.xlsx se usa únicamente para validación parcial del modelo.'
     },
     campuses:campusNorms.map(n=>summaries[n]),
     overall:summaries['__ALL__'],
     students,
+    validation:{overall:validationOverall,by_campus:validationByCampus},
     clusters_catalog:catalogo
   };
 }
@@ -582,9 +704,49 @@ function renderKPIs(s){
   $('sourceText').textContent=`${fmt.format(state.data.meta.matched_active)} matches Base Viva · ${fmt.format(state.data.meta.inscritos_respondent_match_total)} matches inscritos${overlapText}`;
 }
 
+function currentValidation(){
+  if(!state.data?.validation) return null;
+  if(state.selectedCampus==='__ALL__') return state.data.validation.overall;
+  return state.data.validation.by_campus?.[state.selectedCampus] || {
+    initial_total:0,enrolled:0,current_viva:0,outside_not_enrolled:0,overlap_current_enrolled:0,
+    observed_conversion:0,enrolled_high_share:0,avg_predicted_initial:null,avg_predicted_enrolled:null,
+    propensity:PROP_ORDER.map(label=>({label,initial:0,enrolled:0,current_viva:0,outside_not_enrolled:0,observed_conversion:0,avg_predicted:null}))
+  };
+}
+
+function renderValidation(){
+  const v=currentValidation();
+  if(!v) return;
+
+  setText('valInitial',fmt.format(v.initial_total||0));
+  setText('valEnrolled',fmt.format(v.enrolled||0));
+  setText('valConversion',pct(v.observed_conversion));
+  setText('valCurrent',fmt.format(v.current_viva||0));
+  setText('valOutside',fmt.format(v.outside_not_enrolled||0));
+  setText('valHighShare',pct(v.enrolled_high_share));
+  setText('valAvgInitial',pct(v.avg_predicted_initial));
+  setText('valAvgEnrolled',pct(v.avg_predicted_enrolled));
+
+  const rows=v.propensity||[];
+  $('validationTableBody').innerHTML=rows.map(r=>`
+    <tr>
+      <td><strong>${safe(r.label)}</strong></td>
+      <td class="num">${fmt.format(r.initial||0)}</td>
+      <td class="num">${fmt.format(r.enrolled||0)}</td>
+      <td class="num"><strong>${pct(r.observed_conversion)}</strong></td>
+      <td class="num">${fmt.format(r.current_viva||0)}</td>
+      <td class="num">${fmt.format(r.outside_not_enrolled||0)}</td>
+      <td class="num">${pct(r.avg_predicted)}</td>
+    </tr>`).join('');
+
+  const campusText=state.selectedCampus==='__ALL__'?'todos los campus':`el campus ${safe(currentSummary().campus)}`;
+  const overlap=v.overlap_current_enrolled||0;
+  $('validationNote').innerHTML=`Validación parcial sobre <strong>${fmt.format(v.initial_total||0)} respondientes</strong> que hacían match con la Base Viva inicial en ${campusText}. Un inscrito ya es un resultado positivo observado; un alumno que todavía no se ha inscrito <strong>no se considera todavía un negativo final</strong>.`+(overlap?` <strong>Auditoría:</strong> ${fmt.format(overlap)} matrícula(s) aparecen simultáneamente en Base Viva actual e Inscritos.`:'');
+}
+
 function renderDataNotes(){
   const m=state.data.meta;
-  $('surveyNote').innerHTML=`El explorador conserva los <strong>${fmt.format(m.respondent_unique_total)} respondientes únicos</strong> del dashboard. De ellos, <strong>${fmt.format(m.matched_active)}</strong> están hoy en Base Viva y <strong>${fmt.format(m.inscritos_respondent_match_total)}</strong> ya hacen match con INSCRITOS_2027. Los demás también permanecen visibles y quedan etiquetados como “No en Base Viva” y/o “No inscrito”.`;
+  $('surveyNote').innerHTML=`El explorador conserva los <strong>${fmt.format(m.respondent_unique_total)} respondientes únicos</strong> del dashboard. De ellos, <strong>${fmt.format(m.base_viva_inicial_respondent_match)}</strong> hacían match con la Base Viva inicial, <strong>${fmt.format(m.matched_active)}</strong> están hoy en Base Viva y <strong>${fmt.format(m.inscritos_respondent_match_total)}</strong> ya hacen match con INSCRITOS_2027. Los registros permanecen visibles aunque ya no estén en Base Viva.`;
 
   $('methodSurvey').textContent=`Pronóstico total = pronóstico actual sobre Base Viva + respondientes que hacen match con INSCRITOS_2027. Para la tendencia 2027, la tasa proyectada se calcula como pronóstico total / respondientes del dashboard. El explorador no elimina registros: conserva todos los respondientes y permite filtrar por propensión y estado operativo.`;
 }
@@ -840,6 +1002,10 @@ function renderStudentDetail(){
   setText('studentCampus',s.campus);
   setText('studentMatricula',s.matricula);
 
+  const initialBadge=$('studentBaseInicialBadge');
+  initialBadge.textContent=s.en_base_viva_inicial?'En Base inicial':'No Base inicial';
+  initialBadge.className=`badge ${s.en_base_viva_inicial?'initial':'inactive'}`;
+
   const baseBadge=$('studentBaseVivaBadge');
   baseBadge.textContent=s.en_base_viva?'En Base Viva':'No en Base Viva';
   baseBadge.className=`badge ${s.en_base_viva?'live':'inactive'}`;
@@ -876,7 +1042,7 @@ function renderCampusTable(){
 }
 
 function renderAll(){
-  const s=currentSummary(); renderDataNotes(); renderKPIs(s); renderHistory(s); renderClusters(s); renderPropensity(); renderRank('topFactors',s.factors); renderRank('topReasons',s.reasons); renderExperience(s); renderStudentList(); renderStudentDetail(); renderCampusTable();
+  const s=currentSummary(); renderDataNotes(); renderKPIs(s); renderHistory(s); renderValidation(); renderClusters(s); renderPropensity(); renderRank('topFactors',s.factors); renderRank('topReasons',s.reasons); renderExperience(s); renderStudentList(); renderStudentDetail(); renderCampusTable();
 }
 
 function bind(){

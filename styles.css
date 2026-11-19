@@ -382,3 +382,22 @@ body{font-size:clamp(12px,.82vw,14px)}
 .enrollment-result.not-enrolled .enrollment-card strong{
   color:#7b8a84;
 }
+
+
+/* V11.5 · BASE VIVA INICIAL + VALIDACIÓN PARCIAL */
+.badge.initial{background:#efeafa;color:#674c9b;border-color:#d9cdef}
+.validation-panel{margin-top:14px}
+.validation-head{align-items:flex-start}
+.validation-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0}
+.validation-kpis>div,.validation-model-read>div{border:1px solid #e1e9e5;background:#fbfcfc;border-radius:12px;padding:10px}
+.validation-kpis span,.validation-model-read span{display:block;color:#667b73;font-size:8px;font-weight:750;line-height:1.25}
+.validation-kpis strong,.validation-model-read strong{display:block;margin-top:4px;font-size:20px;color:#263f36}
+.validation-kpis small{display:block;margin-top:2px;color:#19805d;font-size:8px;font-weight:800}
+.validation-model-read{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.validation-model-read strong{font-size:16px}
+.validation-table-wrap{margin-top:6px}
+.validation-table th,.validation-table td{white-space:nowrap}
+.validation-note{margin:9px 0 0;color:#63756e;font-size:8px;line-height:1.45}
+@media(max-width:1100px){.validation-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){.validation-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.validation-model-read{grid-template-columns:1fr}}
+@media(max-width:520px){.validation-kpis{grid-template-columns:1fr}}

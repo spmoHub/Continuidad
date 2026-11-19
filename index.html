@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Continuidad 2027 · Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11.4.1" />
-  <meta name="dashboard-version" content="v11.4.1-enrollment-program-column-fix">
+  <link rel="stylesheet" href="styles.css?v=11.5" />
+  <meta name="dashboard-version" content="v11.5-base-viva-inicial-validation">
 </head>
 <body>
-  <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
+  <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva inicial, Base Viva actual e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
 
   <header class="topbar">
     <div>
@@ -108,6 +108,30 @@
       </article>
     </section>
 
+    <section class="card panel validation-panel">
+      <div class="panel-head validation-head">
+        <div><div class="section-kicker">VALIDACIÓN DEL MODELO EN VIVO</div><h2>¿Cómo están convirtiendo los respondientes de la Base Viva inicial?</h2></div>
+        <span class="badge initial">Validación parcial</span>
+      </div>
+      <div class="validation-kpis">
+        <div><span>Respondientes en Base Viva inicial</span><strong id="valInitial">—</strong></div>
+        <div><span>Ya inscritos</span><strong id="valEnrolled">—</strong><small id="valConversion">—</small></div>
+        <div><span>Siguen en Base Viva</span><strong id="valCurrent">—</strong></div>
+        <div><span>Fuera de Base Viva y no inscritos</span><strong id="valOutside">—</strong></div>
+        <div><span>Inscritos que eran Alta/Muy alta</span><strong id="valHighShare">—</strong></div>
+      </div>
+      <div class="validation-model-read">
+        <div><span>Probabilidad promedio · Base inicial</span><strong id="valAvgInitial">—</strong></div>
+        <div><span>Probabilidad promedio · Ya inscritos</span><strong id="valAvgEnrolled">—</strong></div>
+      </div>
+      <div class="table-scroll validation-table-wrap">
+        <table class="validation-table"><thead><tr>
+          <th>Propensión</th><th class="num">Base inicial</th><th class="num">Inscritos</th><th class="num">Conversión observada</th><th class="num">Sigue Base Viva</th><th class="num">Fuera / no inscrito</th><th class="num">Prob. promedio modelo</th>
+        </tr></thead><tbody id="validationTableBody"></tbody></table>
+      </div>
+      <p id="validationNote" class="validation-note">—</p>
+    </section>
+
     <section class="signals-grid">
       <article class="card panel"><div class="panel-head"><div><div class="section-kicker">QUÉ VALORAN</div><h2>Factores más frecuentes</h2></div></div><div id="topFactors" class="rank-list"></div></article>
       <article class="card panel"><div class="panel-head"><div><div class="section-kicker amber">BARRERAS</div><h2>Razones para no elegir Tecmilenio</h2></div></div><div id="topReasons" class="rank-list reasons"></div></article>
@@ -139,7 +163,7 @@
         <div id="studentEmpty" class="empty-state"><div class="empty-icon">⌕</div><h2>Selecciona una matrícula</h2><p>La ficha muestra probabilidad, respuestas, factores, barreras y oportunidad de convencimiento. No se muestran nombres.</p></div>
         <div id="studentDetail" class="hidden">
           <div class="student-hero">
-            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span id="studentBaseVivaBadge" class="badge">—</span><span id="studentInscritoBadge" class="badge">—</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
+            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span id="studentBaseInicialBadge" class="badge">—</span><span id="studentBaseVivaBadge" class="badge">—</span><span id="studentInscritoBadge" class="badge">—</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
             <div class="probability-card"><span>Probabilidad estimada de continuidad</span><strong id="studentProb">—</strong><div class="prob-track"><div id="studentProbBar"></div></div><div class="prob-meta"><span id="studentProp">—</span><span id="studentPct">—</span></div></div>
           </div>
 
@@ -217,11 +241,11 @@
       <div class="guide-note"><strong>Semáforo de experiencia:</strong> menor a 7 = rojo · de 7 a 8.9 = amarillo · 9 o más = verde. Aplica a NPS, orgullo, seguridad e infraestructura.</div>
     </section>
 
-    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>La Base Viva ya representa a quienes siguen en el funnel. El pronóstico pendiente se calcula sobre esa Base Viva con la metodología vigente. De forma separada se cuentan los respondientes que ya aparecen en INSCRITOS_2027.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre la Base Viva actual + inscritos confirmados que hacen match con los respondientes de la encuesta. No se cuentan inscritos de otros universos que no estén en la hoja Alumnos.</p></div><div><h3>Interpretación</h3><p>Riesgo o mejora solo se declara cuando la diferencia contra 2026 es consistente con la composición de propensión del campus.</p></div></div></details>
+    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>La Base Viva ya representa a quienes siguen en el funnel. El pronóstico pendiente se calcula sobre esa Base Viva con la metodología vigente. De forma separada se cuentan los respondientes que ya aparecen en INSCRITOS_2027.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre la Base Viva actual + inscritos confirmados que hacen match con los respondientes de la encuesta. No se cuentan inscritos de otros universos que no estén en la hoja Alumnos.</p></div><div><h3>Validación en vivo</h3><p>BASE_VIVA_INICIAL.xlsx se usa como foto de referencia. Se compara únicamente con respondientes del dashboard para observar inscripción por propensión. Es una validación parcial mientras el proceso siga abierto.</p></div></div></details>
   </main>
 
   <div id="errorBox" class="error-box hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=11.4.1"></script>
+  <script src="app.js?v=11.5"></script>
 </body>
 </html>
