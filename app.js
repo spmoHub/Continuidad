@@ -203,9 +203,9 @@ async function fetchData(reload=false){
 
     const campusInscrito=r['Campus']??r['Escuela: Campus: Nombre de la cuenta']??'';
     const programaInscrito=
-      r['Programa de Interés'] ??
+      r['Programa de interés'] ??
       r['Programa de interes'] ??
-      r['Programa de Interes'] ??
+      r['Programa de interes'] ??
       '';
 
     const campus=campusInscrito
