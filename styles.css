@@ -701,3 +701,67 @@ body{font-size:clamp(12px,.82vw,14px)}
   .threshold-control{align-items:stretch;flex-direction:column}
   .model-accuracy-kpis{grid-template-columns:1fr}
 }
+
+
+/* =========================================================
+   V11.10 · BASE TOTAL + DESGLOSE DE ESTATUS + EVALUACIÓN SIMPLE
+   ========================================================= */
+.status-breakdown-section{
+  margin-top:14px;
+  padding-top:12px;
+  border-top:1px solid #e4ece8;
+}
+.model-result-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin:9px 0 11px;
+}
+.model-result-card{
+  padding:11px;
+  border:1px solid #e0e7e4;
+  border-radius:12px;
+  background:#fafcfc;
+}
+.model-result-card span{
+  display:block;
+  color:#63766f;
+  font-size:8px;
+  line-height:1.25;
+  font-weight:760;
+}
+.model-result-card strong{
+  display:block;
+  margin-top:5px;
+  color:#29443a;
+  font-size:22px;
+}
+.model-result-card small{
+  display:block;
+  margin-top:3px;
+  color:#788a83;
+  font-size:7px;
+  line-height:1.3;
+}
+.model-result-card.good{
+  background:#eff9f4;
+  border-color:#cee7db;
+}
+.model-result-card.good strong{color:#137354}
+.model-result-card.risk{
+  background:#fff5f4;
+  border-color:#efd8d5;
+}
+.model-result-card.risk strong{color:#a75249}
+.emphasis-note{
+  padding:9px 11px;
+  border-radius:10px;
+  background:#f7faf9;
+  border:1px solid #e1eae6;
+}
+@media(max-width:900px){
+  .model-result-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .model-result-summary{grid-template-columns:1fr}
+}

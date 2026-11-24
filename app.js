@@ -361,6 +361,8 @@ async function fetchData(reload=false){
     }));
     const priorityMap=new Map(priorityRows.map(r=>[r.value,r]));
 
+    const statusCounts={};
+
     let enrolled=0;
     let prospect=0;
     let otherNotEnrolled=0;
@@ -378,6 +380,9 @@ async function fetchData(reload=false){
       const priority=asInt(row['prioridad_tecmilenio']);
 
       const currentInfo=vivaById.get(mid);
+      const statusLabel=currentInfo ? (cleanText(currentInfo.estatus)||'Sin estatus') : 'Sin match en Base Viva';
+      statusCounts[statusLabel]=(statusCounts[statusLabel]||0)+1;
+
       const isEnrolled=!!(currentInfo && isEnrolledStatus(currentInfo.estatus));
       const isProspect=!!(currentInfo && isProspectStatus(currentInfo.estatus));
 
@@ -435,6 +440,7 @@ async function fetchData(reload=false){
       enrolled_high_share:enrolled?enrolledHigh/enrolled:0,
       avg_predicted_respondents:respondentProbN?respondentProbSum/respondentProbN:null,
       avg_predicted_enrolled:enrolledProbN?enrolledProbSum/enrolledProbN:null,
+      status_counts:statusCounts,
 
       propensity:propRows.map(r=>({
         label:r.label,
@@ -465,8 +471,63 @@ async function fetchData(reload=false){
     validationByCampus[norm]=validationSummary(ids);
   });
 
+  // Distribución de Estatus de toda la Base Viva (incluye alumnos sin encuesta).
+  const baseStatusCountsByCampus=new Map();
+  const baseStatusCountsAll={};
+
+  vivaById.forEach(info=>{
+    const norm=info.campus_norm||'';
+    const status=cleanText(info.estatus)||'Sin estatus';
+
+    baseStatusCountsAll[status]=(baseStatusCountsAll[status]||0)+1;
+
+    if(!baseStatusCountsByCampus.has(norm)){
+      baseStatusCountsByCampus.set(norm,{});
+    }
+    const bucket=baseStatusCountsByCampus.get(norm);
+    bucket[status]=(bucket[status]||0)+1;
+  });
+
+  function attachStatusBreakdown(summary,baseCounts){
+    const respondentCounts=summary.status_counts||{};
+    const statuses=[...new Set([
+      ...Object.keys(baseCounts||{}),
+      ...Object.keys(respondentCounts||{})
+    ])];
+
+    const preferred=['Inscrito','Prospecto'];
+    statuses.sort((a,b)=>{
+      const ia=preferred.indexOf(a), ib=preferred.indexOf(b);
+      if(ia!==-1 || ib!==-1){
+        if(ia===-1) return 1;
+        if(ib===-1) return -1;
+        return ia-ib;
+      }
+      if(a==='Sin match en Base Viva') return 1;
+      if(b==='Sin match en Base Viva') return -1;
+      return a.localeCompare(b,'es');
+    });
+
+    summary.status_breakdown=statuses.map(status=>{
+      const respondents=respondentCounts[status]||0;
+      const baseTotal=baseCounts?.[status]||0;
+      return {
+        status,
+        respondents,
+        no_survey:Math.max(0,baseTotal-respondents),
+        base_total:baseTotal
+      };
+    });
+  }
+
   const validationOverall=
     validationSummary(new Set(respondentById.keys()));
+
+  attachStatusBreakdown(validationOverall,baseStatusCountsAll);
+
+  Object.entries(validationByCampus).forEach(([norm,summary])=>{
+    attachStatusBreakdown(summary,baseStatusCountsByCampus.get(norm)||{});
+  });
 
   // =====================================================
   // CAMPUS OPERATIVO DE TODOS LOS RESPONDIENTES
@@ -512,10 +573,18 @@ async function fetchData(reload=false){
 
   const histByCampus=groupBy(historico,r=>normalizeCampus(r['Campus']));
 
+  // Base para pronóstico: únicamente respondientes con Estatus Prospecto.
   const baseIdsByCampus=new Map();
   prospectRespondentById.forEach((info,mid)=>{
     if(!baseIdsByCampus.has(info.campus_norm))baseIdsByCampus.set(info.campus_norm,new Set());
     baseIdsByCampus.get(info.campus_norm).add(mid);
+  });
+
+  // Base total: todos los registros de BASE_VIVA.xlsx, hayan respondido encuesta o no.
+  const allBaseIdsByCampus=new Map();
+  vivaById.forEach((info,mid)=>{
+    if(!allBaseIdsByCampus.has(info.campus_norm))allBaseIdsByCampus.set(info.campus_norm,new Set());
+    allBaseIdsByCampus.get(info.campus_norm).add(mid);
   });
 
   const inscritosIdsByCampus=new Map();
@@ -529,6 +598,7 @@ async function fetchData(reload=false){
   const campusSet=new Set([
     ...histByCampus.keys(),
     ...baseIdsByCampus.keys(),
+    ...allBaseIdsByCampus.keys(),
     ...activeByCampus.keys(),
     ...inscritosIdsByCampus.keys(),
     ...respondentIdsByCampus.keys(),
@@ -538,7 +608,7 @@ async function fetchData(reload=false){
     .filter(Boolean)
     .sort((a,b)=>displayCampus(a).localeCompare(displayCampus(b),'es'));
 
-  function summarizeGroup(norm,rows,histRows,baseCount,inscritosCount,respondentCount){
+  function summarizeGroup(norm,rows,histRows,baseCount,inscritosCount,respondentCount,baseTotalCount){
     const probs=rows.map(r=>asFloat(r['Prob_Continuidad_2027_Calibrada'])).filter(v=>v!==null).map(p=>Math.min(1,Math.max(0,p)));
     const sumProb=probs.reduce((a,b)=>a+b,0);
     const modelMean=probs.length?sumProb/probs.length:null;
@@ -607,6 +677,7 @@ async function fetchData(reload=false){
       campus_norm:norm,
       campus:norm==='__ALL__'?'Todos los campus':displayCampus(norm),
       survey_n:rows.length,
+      base_total_n:Number(baseTotalCount||0),
       base_viva_n:Number(baseCount||0),
       inscritos_confirmados:inscritosConfirmados,
       respondent_total_n:respondentTotal,
@@ -633,23 +704,25 @@ async function fetchData(reload=false){
     histByCampus.get(norm)||[],
     baseIdsByCampus.get(norm)?.size||0,
     inscritosIdsByCampus.get(norm)?.size||0,
-    respondentIdsByCampus.get(norm)?.size||0
+    respondentIdsByCampus.get(norm)?.size||0,
+    allBaseIdsByCampus.get(norm)?.size||0
   ));
 
   const overall=summarizeGroup(
     '__ALL__',
     active,
     historico,
-    vivaById.size,
-    inscritosMatchedById.size,
-    respondentById.size
+    prospectRespondentById.size,
+    enrolledRespondentById.size,
+    respondentById.size,
+    vivaById.size
   );
 
   overall.operational_base=campusNorms.reduce((a,n)=>a+(summaries[n].operational_base||0),0);
   overall.continuers_expected=campusNorms.reduce((a,n)=>a+(summaries[n].continuers_expected||0),0);
   overall.continuers_low=campusNorms.reduce((a,n)=>a+(summaries[n].continuers_low||0),0);
   overall.continuers_high=campusNorms.reduce((a,n)=>a+(summaries[n].continuers_high||0),0);
-  overall.inscritos_confirmados=inscritosMatchedById.size;
+  overall.inscritos_confirmados=enrolledRespondentById.size;
   overall.forecast_total=overall.continuers_expected+overall.inscritos_confirmados;
   overall.forecast_total_low=overall.continuers_low+overall.inscritos_confirmados;
   overall.forecast_total_high=overall.continuers_high+overall.inscritos_confirmados;
@@ -667,7 +740,7 @@ async function fetchData(reload=false){
   const highCount=(overall.propensity||[]).filter(x=>['Alta','Muy alta'].includes(x.label)).reduce((a,x)=>a+x.count,0);
   const lowCount=(overall.propensity||[]).filter(x=>['Baja','Muy baja'].includes(x.label)).reduce((a,x)=>a+x.count,0);
   const highPct=overall.survey_n?highCount/overall.survey_n:0,lowPct=overall.survey_n?lowCount/overall.survey_n:0;
-  overall.explanation=`Sobre la Base Viva actual de ${fmt.format(overall.operational_base)} alumnos se proyectan ${fmt.format(overall.continuers_expected)} continuadores. Además, ${fmt.format(overall.inscritos_confirmados)} respondientes hacen match con INSCRITOS_2027 y ya están confirmados. El pronóstico total es ${fmt.format(overall.forecast_total)}. Entre los respondentes que siguen en Base Viva, ${fmt.format(highCount)} (${(highPct*100).toFixed(0)}%) están en propensión alta/muy alta y ${fmt.format(lowCount)} (${(lowPct*100).toFixed(0)}%) en baja/muy baja. Se identifican ${fmt.format(overall.opportunity_count)} oportunidades de convencimiento media-alta, alta o muy alta.`;
+  overall.explanation=`La Base Viva total contiene ${fmt.format(overall.base_total_n)} registros. De los respondientes, ${fmt.format(overall.operational_base)} tienen Estatus Prospecto y sobre ellos se proyectan ${fmt.format(overall.continuers_expected)} continuadores. Además, ${fmt.format(overall.inscritos_confirmados)} respondientes tienen Estatus Inscrito. El pronóstico total es ${fmt.format(overall.forecast_total)}. Entre los Prospectos evaluados, ${fmt.format(highCount)} están en propensión alta/muy alta y ${fmt.format(lowCount)} en baja/muy baja.`;
   summaries['__ALL__']=overall;
 
   // =====================================================
@@ -761,12 +834,7 @@ async function fetchData(reload=false){
     respondentById.size-baseEstatusRespondentMatch
   );
 
-  const baseVivaStatusCounts={};
-  vivaById.forEach(info=>{
-    const status=cleanText(info.estatus)||'Sin estatus';
-    baseVivaStatusCounts[status]=(baseVivaStatusCounts[status]||0)+1;
-  });
-
+  const baseVivaStatusCounts=baseStatusCountsAll;
 
   return {
     meta:{
@@ -820,11 +888,11 @@ function campusOptions(){
 }
 
 function renderKPIs(s){
-  $('kpiBase').textContent=fmt.format(s.base_viva_n||0);
+  $('kpiBase').textContent=fmt.format(s.base_total_n||0);
 
-  $('kpiSurvey').textContent=fmt.format(s.respondent_total_n||0);
+  $('kpiSurvey').textContent=fmt.format(s.base_viva_n||0);
   const coverage=s.respondent_total_n? s.base_viva_n/s.respondent_total_n : 0;
-  $('kpiCoverage').textContent=`${pct(coverage)} con Estatus Prospecto`;
+  $('kpiCoverage').textContent=`${pct(coverage)} de respondientes · Estatus Prospecto`;
 
   $('kpiBaseForecast').textContent=s.continuers_expected==null?'—':fmt.format(s.continuers_expected);
   $('kpiBaseForecastSub').textContent=`rango ${fmt.format(s.continuers_low||0)}–${fmt.format(s.continuers_high||0)}`;
@@ -861,6 +929,8 @@ function currentValidation(){
     enrolled_high_share:0,
     avg_predicted_respondents:null,
     avg_predicted_enrolled:null,
+    status_counts:{},
+    status_breakdown:[],
     propensity:PROP_ORDER.map(label=>({
       label,
       respondents:0,
@@ -940,17 +1010,28 @@ function renderValidation(){
 
   const c=classificationAtThreshold(state.validationThreshold);
 
+  const correct=(c.tp||0)+(c.tn||0);
+  const incorrect=(c.fp||0)+(c.fn||0);
+
   setText('valThreshold',state.validationThreshold.toFixed(2));
   setText('valEvaluated',fmt.format(c.evaluated||0));
-  setText('valAccuracy',pct(c.accuracy));
-  setText('valPrecision',pct(c.precision));
-  setText('valRecall',pct(c.recall));
-  setText('valF1',pct(c.f1));
+  setText('valCorrect',fmt.format(correct));
+  setText('valIncorrect',fmt.format(incorrect));
   setText('valTP',fmt.format(c.tp||0));
   setText('valFP',fmt.format(c.fp||0));
   setText('valTN',fmt.format(c.tn||0));
   setText('valFN',fmt.format(c.fn||0));
   setText('valMissingStatus',fmt.format(c.missing||0));
+
+  const statusRows=v.status_breakdown||[];
+  $('statusBreakdownTableBody').innerHTML=statusRows.map(r=>`
+    <tr>
+      <td><strong>${safe(r.status)}</strong></td>
+      <td class="num">${fmt.format(r.respondents||0)}</td>
+      <td class="num">${fmt.format(r.no_survey||0)}</td>
+      <td class="num">${fmt.format(r.base_total||0)}</td>
+    </tr>
+  `).join('');
 
   const rows=v.propensity||[];
 
@@ -997,8 +1078,9 @@ function renderValidation(){
   $('validationNote').innerHTML=
     `Validación parcial sobre <strong>${fmt.format(v.respondent_total||0)} respondientes</strong> de ${campusText}. `+
     `El resultado observado actual es <strong>Estatus Inscrito = 1</strong> y cualquier otro Estatus = 0. `+
-    `Con umbral <strong>${state.validationThreshold.toFixed(2)}</strong>, el modelo identifica ${fmt.format(c.tp)} inscritos correctamente y deja ${fmt.format(c.fn)} inscritos por debajo del corte. `+
-    `Estas métricas son provisionales porque varios alumnos No inscritos todavía pueden convertir antes del cierre.`;
+    `Con umbral <strong>${state.validationThreshold.toFixed(2)}</strong>, el modelo acierta ${fmt.format(correct)} casos y se equivoca en ${fmt.format(incorrect)}. `+
+    `El corte de 0.35 prioriza <strong>detectar más inscritos</strong>: reduce los falsos negativos, pero acepta más falsos positivos y por eso baja la precisión. `+
+    `Estas métricas son provisionales porque varios No inscritos todavía pueden convertir antes del cierre.`;
 }
 
 
@@ -1306,7 +1388,7 @@ function renderStudentDetail(){
 }
 
 function renderCampusTable(){
-  const rows=state.data.campuses; $('campusTableBody').innerHTML=rows.map(s=>{ const high=(s.propensity||[]).filter(x=>['Alta','Muy alta'].includes(x.label)).reduce((a,x)=>a+x.count,0); const highPct=s.survey_n?high/s.survey_n:0; return `<tr data-campus="${safe(s.campus_norm)}"><td><strong>${safe(s.campus)}</strong></td><td class="num">${fmt.format(s.base_viva_n||0)}</td><td class="num">${fmt.format(s.survey_n||0)}</td><td class="num">${s.continuers_expected==null?'—':fmt.format(s.continuers_expected)}</td><td class="num">${fmt.format(s.inscritos_confirmados||0)}</td><td class="num"><strong>${s.forecast_total==null?'—':fmt.format(s.forecast_total)}</strong></td><td class="num">${fmt.format(s.opportunity_count||0)}</td><td><span class="table-state ${cssState(s.state)}">${safe(s.state)}</span></td></tr>`; }).join('');
+  const rows=state.data.campuses; $('campusTableBody').innerHTML=rows.map(s=>{ const high=(s.propensity||[]).filter(x=>['Alta','Muy alta'].includes(x.label)).reduce((a,x)=>a+x.count,0); const highPct=s.survey_n?high/s.survey_n:0; return `<tr data-campus="${safe(s.campus_norm)}"><td><strong>${safe(s.campus)}</strong></td><td class="num">${fmt.format(s.base_total_n||0)}</td><td class="num">${fmt.format(s.base_viva_n||0)}</td><td class="num">${fmt.format(s.respondent_total_n||0)}</td><td class="num">${s.continuers_expected==null?'—':fmt.format(s.continuers_expected)}</td><td class="num">${fmt.format(s.inscritos_confirmados||0)}</td><td class="num"><strong>${s.forecast_total==null?'—':fmt.format(s.forecast_total)}</strong></td><td class="num">${fmt.format(s.opportunity_count||0)}</td><td><span class="table-state ${cssState(s.state)}">${safe(s.state)}</span></td></tr>`; }).join('');
   document.querySelectorAll('[data-campus]').forEach(tr=>tr.addEventListener('click',()=>{
     state.selectedCampus=tr.dataset.campus;
     state.selectedStudent=null;
