@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Continuidad 2027 · Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11.6" />
-  <meta name="dashboard-version" content="v11.6-validation-all-respondents-tabs">
+  <link rel="stylesheet" href="styles.css?v=11.8" />
+  <meta name="dashboard-version" content="v11.7.1-separate-status-base">
 </head>
 <body>
   <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva inicial, Base Viva actual e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
@@ -83,12 +83,12 @@
     <div id="forecastTab" class="dashboard-tab-panel active" role="tabpanel" aria-labelledby="tabForecast">
 
     <section class="kpi-grid">
-      <article class="card kpi"><span>Base Viva actual</span><strong id="kpiBase">—</strong><small>alumnos que siguen en funnel</small></article>
-      <article class="card kpi"><span>Respondentes en Base Viva</span><strong id="kpiSurvey">—</strong><small id="kpiCoverage">—</small></article>
-      <article class="card kpi"><span>Pronóstico Base Viva</span><strong id="kpiBaseForecast">—</strong><small id="kpiBaseForecastSub">—</small></article>
+      <article class="card kpi"><span>Prospectos encuestados</span><strong id="kpiBase">—</strong><small>Estatus Prospecto en BASE_VIVA.xlsx</small></article>
+      <article class="card kpi"><span>Respondientes del campus</span><strong id="kpiSurvey">—</strong><small id="kpiCoverage">—</small></article>
+      <article class="card kpi"><span>Pronóstico de Prospectos</span><strong id="kpiBaseForecast">—</strong><small id="kpiBaseForecastSub">—</small></article>
       <article class="card kpi confirmed"><span>Ya inscritos</span><strong id="kpiInscritos">—</strong><small id="kpiInscritosSub">—</small></article>
       <article class="card kpi accent"><span>Pronóstico total Ago-27</span><strong id="kpiCont">—</strong><small id="kpiContSub">—</small></article>
-      <article class="card kpi"><span>Oportunidades de convencimiento</span><strong id="kpiOpp">—</strong><small>entre quienes siguen en Base Viva</small></article>
+      <article class="card kpi"><span>Oportunidades de convencimiento</span><strong id="kpiOpp">—</strong><small>entre respondientes con Estatus Prospecto</small></article>
     </section>
 
     <section class="campus-grid">
@@ -140,7 +140,7 @@
           <button id="copyOpportunitiesBtn" class="mini-btn secondary" type="button">Copiar matrículas</button>
           <button id="downloadOpportunitiesBtn" class="mini-btn secondary" type="button">Descargar CSV</button>
         </div>
-        <p class="opportunity-hint">“Ver oportunidades” muestra únicamente alumnos que siguen en Base Viva, no están inscritos y tienen prioridad Media-Alta, Alta o Muy alta.</p>
+        <p class="opportunity-hint">“Ver oportunidades” muestra únicamente respondientes con Estatus Prospecto, no inscritos y con prioridad Media-Alta, Alta o Muy alta.</p>
         <div id="studentList" class="student-list"></div>
         <p id="listNote" class="muted list-note"></p>
         <p id="exportStatus" class="export-status" aria-live="polite"></p>
@@ -169,6 +169,7 @@
             <div class="info-card"><span>Campus de interés</span><strong id="studentDesiredCampus">—</strong></div>
             <div class="info-card"><span>Modalidad preferida</span><strong id="studentModality">—</strong></div>
             <div class="info-card"><span>Movilidad</span><strong id="studentMobility">—</strong></div>
+            <div class="info-card status-info-card"><span>Estatus en Base Viva</span><strong id="studentStatusBaseViva">—</strong></div>
             <div class="info-card"><span>Prioridad Tecmilenio</span><strong id="studentPriority">—</strong></div>
             <div class="info-card"><span>Programa ofertado en campus</span><strong id="studentOffered">—</strong></div>
             <div class="info-card"><span>Seguridad en carrera</span><strong id="studentCareerCertainty">—</strong></div>
@@ -214,7 +215,7 @@
 
     <section class="card panel campus-table-panel">
       <div class="panel-head"><div><div class="section-kicker">COMPARATIVO</div><h2>Resumen por campus</h2></div><small>Haz clic en una fila para abrir el campus.</small></div>
-      <div class="table-scroll"><table><thead><tr><th>Campus</th><th class="num">Base Viva</th><th class="num">Respondentes en Base Viva</th><th class="num">Pronóstico Base Viva</th><th class="num">Inscritos (match encuesta)</th><th class="num">Pronóstico total</th><th class="num">Oportunidades</th><th>Lectura</th></tr></thead><tbody id="campusTableBody"></tbody></table></div>
+      <div class="table-scroll"><table><thead><tr><th>Campus</th><th class="num">Prospectos encuestados</th><th class="num">Respondientes</th><th class="num">Pronóstico Prospectos</th><th class="num">Estatus Inscrito</th><th class="num">Pronóstico total</th><th class="num">Oportunidades</th><th>Lectura</th></tr></thead><tbody id="campusTableBody"></tbody></table></div>
     </section>
 
     <section class="card indicator-guide">
@@ -228,7 +229,7 @@
       <div class="guide-note"><strong>Semáforo de experiencia:</strong> menor a 7 = rojo · de 7 a 8.9 = amarillo · 9 o más = verde. Aplica a NPS, orgullo, seguridad e infraestructura.</div>
     </section>
 
-    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>La Base Viva ya representa a quienes siguen en el funnel. El pronóstico pendiente se calcula sobre esa Base Viva con la metodología vigente. De forma separada se cuentan los respondientes que ya aparecen en INSCRITOS_2027.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre la Base Viva actual + inscritos confirmados que hacen match con los respondientes de la encuesta. No se cuentan inscritos de otros universos que no estén en la hoja Alumnos.</p></div><div><h3>Validación en vivo</h3><p>La validación parcial usa todos los respondientes de la encuesta y todos los inscritos que hacen match con ellos. BASE_VIVA_INICIAL.xlsx se conserva como fotografía del funnel y no limita los positivos observados.</p></div></div></details>
+    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>BASE_VIVA.xlsx aporta el Estatus actual. El pronóstico pendiente se calcula únicamente con los respondientes cuyo Estatus es Prospecto; los respondientes con Estatus Inscrito se suman directamente como continuidad ya observada.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre respondientes con Estatus Prospecto + respondientes con Estatus Inscrito. La encuesta sigue siendo el universo maestro.</p></div><div><h3>Validación en vivo</h3><p>La validación parcial usa todos los respondientes de la encuesta. Estatus Inscrito se toma como resultado positivo observado y cualquier otro Estatus como No inscrito en la fotografía actual; BASE_VIVA_INICIAL.xlsx queda como referencia histórica del funnel.</p></div></div></details>
     </div>
 
     <div id="validationTab" class="dashboard-tab-panel" role="tabpanel" aria-labelledby="tabValidation">
@@ -243,9 +244,18 @@
 
         <p class="validation-intro">
           Esta vista usa como universo a <strong>todos los respondientes de la encuesta</strong>.
-          Los positivos observados son todos los respondientes que ya hacen match con
-          <strong>INSCRITOS_2027</strong>, aunque no hayan aparecido en la Base Viva inicial.
+          El resultado observado se toma directamente de <strong>BASE_VIVA.xlsx</strong>:
+          <strong>Estatus Inscrito = 1</strong> y cualquier otro Estatus = 0 en esta fotografía provisional.
+          La Base Viva puede contener alumnos adicionales sin encuesta; esos registros se contabilizan aparte y no entran al modelo.
         </p>
+
+        <div class="source-coverage-grid">
+          <div><span>Base Viva total</span><strong id="coverageBaseTotal">—</strong></div>
+          <div><span>Base Viva con encuesta</span><strong id="coverageBaseSurvey">—</strong></div>
+          <div><span>Base Viva sin encuesta</span><strong id="coverageBaseNoSurvey">—</strong></div>
+          <div><span>Respondientes sin match en Base Viva</span><strong id="coverageSurveyNoBase">—</strong></div>
+          <div><span>Estatus Inscrito sin encuesta</span><strong id="coverageEnrolledNoSurvey">—</strong></div>
+        </div>
 
         <div class="validation-kpis validation-kpis-main">
           <div>
@@ -277,11 +287,11 @@
             <strong id="valInitial">—</strong>
           </div>
           <div>
-            <span>Siguen en Base Viva actual</span>
+            <span>Estatus Prospecto</span>
             <strong id="valCurrent">—</strong>
           </div>
           <div>
-            <span>Fuera de Base Viva y no inscritos</span>
+            <span>Otros estatus / sin match</span>
             <strong id="valOutside">—</strong>
           </div>
         </div>
@@ -297,13 +307,59 @@
           </div>
         </div>
 
+
+        <div class="validation-subsection model-accuracy-section">
+          <div class="panel-head compact-head">
+            <div>
+              <div class="section-kicker">ACIERTO PROVISIONAL</div>
+              <h3>Clasificación actual del modelo · corte de probabilidad 0.50</h3>
+            </div>
+          </div>
+
+          <div class="model-accuracy-kpis">
+            <div><span>Respondientes evaluados con Estatus</span><strong id="valEvaluated">—</strong></div>
+            <div><span>Acierto provisional</span><strong id="valAccuracy">—</strong></div>
+            <div><span>Precisión positivos</span><strong id="valPrecision">—</strong></div>
+            <div><span>Recall de inscritos</span><strong id="valRecall">—</strong></div>
+            <div><span>Sin Estatus / sin match</span><strong id="valMissingStatus">—</strong></div>
+          </div>
+
+          <div class="confusion-grid">
+            <div class="confusion-card good">
+              <span>Predijo continuidad · Sí inscrito</span>
+              <strong id="valTP">—</strong>
+              <small>Verdaderos positivos</small>
+            </div>
+            <div class="confusion-card warn">
+              <span>Predijo continuidad · No inscrito</span>
+              <strong id="valFP">—</strong>
+              <small>Falsos positivos provisionales</small>
+            </div>
+            <div class="confusion-card neutral">
+              <span>Predijo no continuidad · No inscrito</span>
+              <strong id="valTN">—</strong>
+              <small>Verdaderos negativos provisionales</small>
+            </div>
+            <div class="confusion-card risk">
+              <span>Predijo no continuidad · Sí inscrito</span>
+              <strong id="valFN">—</strong>
+              <small>Falsos negativos</small>
+            </div>
+          </div>
+
+          <p class="validation-note">
+            Estas métricas son una fotografía provisional: varios alumnos clasificados hoy como “No inscrito”
+            todavía pueden avanzar a Inscrito. Por eso el resultado final del modelo debe recalcularse al cierre.
+          </p>
+        </div>
+
         <div class="table-scroll validation-table-wrap">
           <table class="validation-table">
             <thead>
               <tr>
                 <th>Propensión</th>
                 <th class="num">Respondientes</th>
-                <th class="num">Inscritos</th>
+                <th class="num">Estatus Inscrito</th>
                 <th class="num">Conversión observada</th>
                 <th class="num">En Base Viva inicial</th>
                 <th class="num">Inscritos fuera base inicial</th>
@@ -315,12 +371,44 @@
         </div>
 
         <p id="validationNote" class="validation-note">—</p>
+
+        <div class="validation-subsection">
+          <div class="panel-head compact-head">
+            <div>
+              <div class="section-kicker">PRIORIDAD TECMILENIO</div>
+              <h3>¿Cómo se relaciona la prioridad declarada con inscripción y propensión?</h3>
+            </div>
+          </div>
+
+          <div class="priority-analysis-grid">
+            <div class="priority-table-card">
+              <h4>Conversión observada por Prioridad 1–5</h4>
+              <div class="table-scroll">
+                <table class="validation-table compact-table">
+                  <thead><tr><th>Prioridad</th><th class="num">Respondientes</th><th class="num">Inscritos</th><th class="num">Conversión</th><th class="num">Prob. promedio</th></tr></thead>
+                  <tbody id="priorityConversionTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="priority-table-card">
+              <h4>Propensión dentro de cada nivel de Prioridad</h4>
+              <div class="table-scroll">
+                <table class="validation-table compact-table">
+                  <thead><tr><th>Prioridad</th><th class="num">Muy baja</th><th class="num">Baja</th><th class="num">Media</th><th class="num">Alta</th><th class="num">Muy alta</th></tr></thead>
+                  <tbody id="priorityPropensityTableBody"></tbody>
+                </table>
+              </div>
+              <p class="validation-note">Cada celda muestra alumnos y porcentaje dentro de ese nivel de Prioridad. La propensión relativa sigue siendo un quintil del ranking del modelo.</p>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   </main>
 
   <div id="errorBox" class="error-box hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=11.6"></script>
+  <script src="app.js?v=11.8"></script>
 </body>
 </html>

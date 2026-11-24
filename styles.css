@@ -510,3 +510,159 @@ body{font-size:clamp(12px,.82vw,14px)}
 @media(max-width:520px){
   .validation-kpis-main{grid-template-columns:1fr}
 }
+
+
+/* =========================================================
+   V11.7 · ESTATUS BASE VIVA + COBERTURA + PRIORIDAD
+   ========================================================= */
+.status-info-card{
+  border-color:#d7e6df;
+  background:#f7fbf9;
+}
+.status-info-card strong{
+  color:#315f4f;
+}
+.source-coverage-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  margin:0 0 12px;
+}
+.source-coverage-grid>div{
+  padding:9px 10px;
+  border:1px solid #e0e9e5;
+  border-radius:11px;
+  background:#fbfcfc;
+}
+.source-coverage-grid span{
+  display:block;
+  color:#687c74;
+  font-size:8px;
+  font-weight:750;
+  line-height:1.25;
+}
+.source-coverage-grid strong{
+  display:block;
+  margin-top:4px;
+  font-size:18px;
+  color:#27473c;
+}
+.validation-subsection{
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid #e3ebe7;
+}
+.compact-head{margin-bottom:8px}
+.compact-head h3{
+  margin:2px 0 0;
+  font-size:15px;
+  color:#213a31;
+}
+.priority-analysis-grid{
+  display:grid;
+  grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);
+  gap:10px;
+}
+.priority-table-card{
+  border:1px solid #e1e9e5;
+  background:#fbfcfc;
+  border-radius:12px;
+  padding:10px;
+}
+.priority-table-card h4{
+  margin:0 0 8px;
+  font-size:10px;
+  color:#425d53;
+}
+.compact-table th,.compact-table td{padding:7px 8px}
+.compact-table small{font-size:7px;color:#788a83}
+@media(max-width:1100px){
+  .source-coverage-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .priority-analysis-grid{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .source-coverage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .source-coverage-grid{grid-template-columns:1fr}
+}
+
+
+/* =========================================================
+   V11.8 · ESTATUS OPERATIVO + EVALUACIÓN PROVISIONAL
+   ========================================================= */
+.model-accuracy-section{
+  margin-top:16px;
+  padding-top:14px;
+  border-top:1px solid #e5ece8;
+}
+.model-accuracy-kpis{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  margin:8px 0 10px;
+}
+.model-accuracy-kpis>div{
+  padding:10px;
+  border:1px solid #e1e9e5;
+  background:#fbfcfc;
+  border-radius:11px;
+}
+.model-accuracy-kpis span{
+  display:block;
+  color:#657970;
+  font-size:8px;
+  font-weight:750;
+  line-height:1.25;
+}
+.model-accuracy-kpis strong{
+  display:block;
+  margin-top:4px;
+  color:#24483a;
+  font-size:18px;
+}
+.confusion-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:8px;
+}
+.confusion-card{
+  padding:10px;
+  border-radius:11px;
+  border:1px solid #e3e8e6;
+  background:#fafbfb;
+}
+.confusion-card span{
+  display:block;
+  font-size:8px;
+  line-height:1.25;
+  font-weight:750;
+  color:#61746d;
+}
+.confusion-card strong{
+  display:block;
+  margin-top:4px;
+  font-size:20px;
+}
+.confusion-card small{
+  display:block;
+  margin-top:2px;
+  font-size:7px;
+  color:#7c8d86;
+}
+.confusion-card.good{background:#f1faf6;border-color:#d2eadf}
+.confusion-card.good strong{color:#137455}
+.confusion-card.warn{background:#fff9ee;border-color:#efe1bd}
+.confusion-card.warn strong{color:#9c6a10}
+.confusion-card.risk{background:#fff4f3;border-color:#efd5d2}
+.confusion-card.risk strong{color:#a44f47}
+.confusion-card.neutral strong{color:#53665f}
+
+@media(max-width:1100px){
+  .model-accuracy-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .confusion-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .model-accuracy-kpis,.confusion-grid{grid-template-columns:1fr}
+}
