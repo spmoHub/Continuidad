@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Continuidad 2027 · Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11.8" />
+  <link rel="stylesheet" href="styles.css?v=11.9" />
   <meta name="dashboard-version" content="v11.7.1-separate-status-base">
 </head>
 <body>
-  <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva inicial, Base Viva actual e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
+  <div id="loading" class="loading"><div class="loader-card"><div class="spinner"></div><div><strong>Leyendo modelo, Base Viva, Base Viva actual e inscritos…</strong><p>El tablero se construye con los archivos de esta carpeta.</p></div></div></div>
 
   <header class="topbar">
     <div>
@@ -150,7 +150,7 @@
         <div id="studentEmpty" class="empty-state"><div class="empty-icon">⌕</div><h2>Selecciona una matrícula</h2><p>La ficha muestra probabilidad, respuestas, factores, barreras y oportunidad de convencimiento. No se muestran nombres.</p></div>
         <div id="studentDetail" class="hidden">
           <div class="student-hero">
-            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span id="studentBaseInicialBadge" class="badge">—</span><span id="studentBaseVivaBadge" class="badge">—</span><span id="studentInscritoBadge" class="badge">—</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
+            <div><div class="hero-badges"><span id="studentCampus" class="badge">—</span><span id="studentBaseVivaBadge" class="badge">—</span><span id="studentInscritoBadge" class="badge">—</span></div><h2 id="studentMatricula">—</h2><p class="student-sub">Ficha individual de continuidad</p></div>
             <div class="probability-card"><span>Probabilidad estimada de continuidad</span><strong id="studentProb">—</strong><div class="prob-track"><div id="studentProbBar"></div></div><div class="prob-meta"><span id="studentProp">—</span><span id="studentPct">—</span></div></div>
           </div>
 
@@ -229,7 +229,7 @@
       <div class="guide-note"><strong>Semáforo de experiencia:</strong> menor a 7 = rojo · de 7 a 8.9 = amarillo · 9 o más = verde. Aplica a NPS, orgullo, seguridad e infraestructura.</div>
     </section>
 
-    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>BASE_VIVA.xlsx aporta el Estatus actual. El pronóstico pendiente se calcula únicamente con los respondientes cuyo Estatus es Prospecto; los respondientes con Estatus Inscrito se suman directamente como continuidad ya observada.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre respondientes con Estatus Prospecto + respondientes con Estatus Inscrito. La encuesta sigue siendo el universo maestro.</p></div><div><h3>Validación en vivo</h3><p>La validación parcial usa todos los respondientes de la encuesta. Estatus Inscrito se toma como resultado positivo observado y cualquier otro Estatus como No inscrito en la fotografía actual; BASE_VIVA_INICIAL.xlsx queda como referencia histórica del funnel.</p></div></div></details>
+    <details class="methodology card"><summary>Cómo se construye el pronóstico</summary><div class="method-grid"><div><h3>Encuesta</h3><p id="methodSurvey">—</p></div><div><h3>Universo operativo</h3><p>BASE_VIVA.xlsx aporta el Estatus actual. El pronóstico pendiente se calcula únicamente con los respondientes cuyo Estatus es Prospecto; los respondientes con Estatus Inscrito se suman directamente como continuidad ya observada.</p></div><div><h3>Pronóstico total</h3><p>Pronóstico total = pronóstico sobre respondientes con Estatus Prospecto + respondientes con Estatus Inscrito. La encuesta sigue siendo el universo maestro.</p></div><div><h3>Validación en vivo</h3><p>La validación parcial usa todos los respondientes de la encuesta. Estatus Inscrito se toma como resultado positivo observado y cualquier otro Estatus como No inscrito en la fotografía actual.</p></div></div></details>
     </div>
 
     <div id="validationTab" class="dashboard-tab-panel" role="tabpanel" aria-labelledby="tabValidation">
@@ -263,36 +263,21 @@
             <strong id="valRespondents">—</strong>
           </div>
           <div>
-            <span>Ya inscritos</span>
+            <span>Estatus Inscrito</span>
             <strong id="valEnrolled">—</strong>
             <small id="valConversion">—</small>
           </div>
           <div>
-            <span>Inscritos que estaban en Base Viva inicial</span>
-            <strong id="valEnrolledInitial">—</strong>
+            <span>Estatus Prospecto</span>
+            <strong id="valProspect">—</strong>
           </div>
           <div>
-            <span>Inscritos fuera de Base Viva inicial</span>
-            <strong id="valEnrolledOutside">—</strong>
+            <span>Otros estatus / sin match</span>
+            <strong id="valOtherStatus">—</strong>
           </div>
           <div>
             <span>Inscritos que eran Alta/Muy alta</span>
             <strong id="valHighShare">—</strong>
-          </div>
-        </div>
-
-        <div class="validation-funnel-strip">
-          <div>
-            <span>Respondientes en Base Viva inicial</span>
-            <strong id="valInitial">—</strong>
-          </div>
-          <div>
-            <span>Estatus Prospecto</span>
-            <strong id="valCurrent">—</strong>
-          </div>
-          <div>
-            <span>Otros estatus / sin match</span>
-            <strong id="valOutside">—</strong>
           </div>
         </div>
 
@@ -312,7 +297,18 @@
           <div class="panel-head compact-head">
             <div>
               <div class="section-kicker">ACIERTO PROVISIONAL</div>
-              <h3>Clasificación actual del modelo · corte de probabilidad 0.50</h3>
+              <h3>Clasificación actual del modelo · umbral <span id="valThreshold">0.35</span></h3>
+            </div>
+            <div class="threshold-control">
+              <label for="validationThreshold">Umbral de probabilidad</label>
+              <select id="validationThreshold">
+                <option value="0.25">0.25</option>
+                <option value="0.30">0.30</option>
+                <option value="0.35" selected>0.35</option>
+                <option value="0.40">0.40</option>
+                <option value="0.45">0.45</option>
+                <option value="0.50">0.50</option>
+              </select>
             </div>
           </div>
 
@@ -321,6 +317,7 @@
             <div><span>Acierto provisional</span><strong id="valAccuracy">—</strong></div>
             <div><span>Precisión positivos</span><strong id="valPrecision">—</strong></div>
             <div><span>Recall de inscritos</span><strong id="valRecall">—</strong></div>
+            <div><span>F1</span><strong id="valF1">—</strong></div>
             <div><span>Sin Estatus / sin match</span><strong id="valMissingStatus">—</strong></div>
           </div>
 
@@ -361,8 +358,8 @@
                 <th class="num">Respondientes</th>
                 <th class="num">Estatus Inscrito</th>
                 <th class="num">Conversión observada</th>
-                <th class="num">En Base Viva inicial</th>
-                <th class="num">Inscritos fuera base inicial</th>
+                <th class="num">Estatus Prospecto</th>
+                <th class="num">Otros estatus / sin match</th>
                 <th class="num">Prob. promedio modelo</th>
               </tr>
             </thead>
@@ -409,6 +406,6 @@
 
   <div id="errorBox" class="error-box hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=11.8"></script>
+  <script src="app.js?v=11.9"></script>
 </body>
 </html>
