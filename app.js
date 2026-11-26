@@ -1351,7 +1351,7 @@ function renderStudentList(){
       <span class="campus">${safe(s.campus)}</span>
       <span class="student-status-line">
         <span class="mini-status ${s.inscrito?'enrolled':s.es_prospecto?'yes':'no'}">${safe(s.estatus_base_viva||'Sin match')}</span>
-        <span class="mini-status ${s.inscrito?'enrolled':'no'}">${s.inscrito?'Inscrito':'No inscrito'}</span>
+        ${s.inscrito?'':`<span class="mini-status no">No inscrito</span>`}
       </span>
       <span class="opp-tag ${OPPORTUNITY_LEVELS.has(s.prioridad_convencimiento)?'hot':''}">${safe(s.prioridad_convencimiento||'Seguimiento')}</span>
     </button>
@@ -1373,8 +1373,16 @@ function renderStudentDetail(){
   baseBadge.className=`badge ${s.inscrito?'enrolled':s.es_prospecto?'live':'inactive'}`;
 
   const enrolledBadge=$('studentInscritoBadge');
-  enrolledBadge.textContent=s.inscrito?'Inscrito':'No inscrito';
-  enrolledBadge.className=`badge ${s.inscrito?'enrolled':'inactive'}`;
+
+  if(s.inscrito){
+    // El Estatus ya dice "Inscrito"; no repetir la misma etiqueta.
+    enrolledBadge.textContent='';
+    enrolledBadge.className='badge hidden';
+  }else{
+    // Para Prospecto, Admitido u otro Estatus, aclarar que aún no está inscrito.
+    enrolledBadge.textContent='No inscrito';
+    enrolledBadge.className='badge inactive';
+  }
 
   setText('studentProb',pct(s.prob)); $('studentProbBar').style.width=`${Math.max(0,Math.min(100,(s.prob||0)*100))}%`; setText('studentProp',`Propensión ${s.propension||'—'}`); setText('studentPct',s.percentil_global==null?'—':`Percentil ${Math.round(s.percentil_global)}`);
   setText('studentPotential',s.potencial); setText('studentPotentialPct',s.percentil_estructural==null?'—':Math.round(s.percentil_estructural)); setText('studentConvPriority',s.prioridad_convencimiento); setText('studentOppGap',s.brecha_oportunidad==null?'—':`${s.brecha_oportunidad>=0?'+':''}${Number(s.brecha_oportunidad).toFixed(1)} pctiles`); setText('studentOpportunity',s.oportunidad);
